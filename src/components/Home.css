@@ -1,0 +1,61 @@
+.home {
+    max-width: 600px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.feed {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.cta-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.btn-primary {
+    background-color: #3897f0;
+    color: white;
+}
+
+.btn-secondary {
+    background-color: #dbdbdb;
+    color: black;
+}
+
+.features {
+    margin-top: 30px;
+}
+
+.features ul {
+    padding-left: 20px;
+}
+
+.load-more-btn {
+    background-color: #3897f0;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-top: 20px;
+}
+
+.loading,
+.no-more-posts {
+    text-align: center;
+    padding: 20px;
+    color: #8e8e8e;
+}
