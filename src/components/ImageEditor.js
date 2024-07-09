@@ -170,6 +170,7 @@ function ImageEditor({ user }) {
             const docData = {
                 userId: user.uid,
                 imageUrls: imageUrls,
+                userAvatar: user.photoURL,
                 caption: caption,
                 filter: filter,
                 loopSpeed: loopSpeed,
@@ -178,6 +179,7 @@ function ImageEditor({ user }) {
                 saturation: saturation,
                 blur: blur,
                 hueRotate: hueRotate,
+                likes: [],
                 createdAt: serverTimestamp(),
             };
 

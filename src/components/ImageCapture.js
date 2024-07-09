@@ -2,6 +2,8 @@ import React, { useRef, useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { initializeImageProcessing, terminateImageProcessing, processImages } from './ImageProcessing';
 
+import './ImageCapture.css';
+
 function ImageCapture() {
   const videoRef = useRef(null);
   const [capturedImages, setCapturedImages] = useState([]);
@@ -17,11 +19,11 @@ function ImageCapture() {
   const [isOpenCVLoading, setIsOpenCVLoading] = useState(true);
   const [processingChoices, setProcessingChoices] = useState({
     align: true,
-    warp: true,
-    blend: true,
-    colorCorrect: true,
-    stabilize: true,
-    enhance: true
+    enhance: true,
+    colorGrade: true,
+    sharpen: true,
+    denoise: true,
+    vignette: true
   });
 
   useEffect(() => {

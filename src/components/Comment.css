@@ -1,5 +1,26 @@
+:root {
+    --comment-text: #262626;
+    --comment-action-color: #8e8e8e;
+    --input-border: #dbdbdb;
+    --button-bg: #0095f6;
+    --button-hover-bg: #0081d6;
+    --button-text: white;
+    --input-bg: white;
+}
+
+.dark-mode {
+    --comment-text: #f0f0f0;
+    --comment-action-color: #b0b0b0;
+    --input-border: #555;
+    --button-bg: #1877f2;
+    --button-hover-bg: #166fe5;
+    --button-text: white;
+    --input-bg: #262626;
+}
+
 .comment {
     margin-bottom: 16px;
+    color: var(--comment-text);
 }
 
 .comment p {
@@ -13,7 +34,7 @@
 .comment-actions button {
     background: none;
     border: none;
-    color: #8e8e8e;
+    color: var(--comment-action-color);
     font-size: 12px;
     font-weight: 600;
     margin-right: 12px;
@@ -31,15 +52,17 @@
 
 .reply-form input {
     flex-grow: 1;
-    border: 1px solid #dbdbdb;
+    border: 1px solid var(--input-border);
     border-radius: 3px;
     padding: 6px 12px;
     font-size: 14px;
+    background-color: var(--input-bg);
+    color: var(--comment-text);
 }
 
 .reply-form button {
-    background-color: #0095f6;
-    color: white;
+    background-color: var(--button-bg);
+    color: var(--button-text);
     border: none;
     border-radius: 3px;
     padding: 6px 12px;
@@ -50,5 +73,5 @@
 }
 
 .reply-form button:hover {
-    background-color: #0081d6;
+    background-color: var(--button-hover-bg);
 }

@@ -1,81 +1,102 @@
 import React, { useState, useEffect } from 'react';
-import { collection, query, where, orderBy, limit, getDocs, updateDoc } from 'firebase/firestore';
+import { collection, query, where, orderBy, limit, getDocs, updateDoc, onSnapshot, writeBatch, doc } from 'firebase/firestore';
 import { db } from '../firebase';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { combineNotifications } from '../utils/notificationHelpers';
 import './Notifications.css';
 
-const Notifications = ({ currentUser }) => {
+const Notifications = ({ currentUser, openPostModal, openProfile }) => {
     const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(true);
+    const navigate = useNavigate();
 
     useEffect(() => {
-        const fetchNotifications = async () => {
-            if (!currentUser) return;
+        if (!currentUser) return;
 
-            try {
-                const q = query(
-                    collection(db, 'notifications'),
-                    where('recipientId', '==', currentUser.uid),
-                    orderBy('createdAt', 'desc'),
-                    limit(20)
-                );
-                const querySnapshot = await getDocs(q);
-                const notificationsData = querySnapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                }));
-                setNotifications(notificationsData);
-                setLoading(false);
+        const notificationsRef = collection(db, 'notifications');
+        const q = query(
+            notificationsRef,
+            where('recipientId', '==', currentUser.uid),
+            orderBy('createdAt', 'desc'),
+            limit(20)
+        );
 
-                // Mark notifications as read
-                const batch = db.batch();
-                querySnapshot.docs.forEach((doc) => {
-                    if (!doc.data().read) {
-                        batch.update(doc.ref, { read: true });
-                    }
-                });
-                await batch.commit();
+        const unsubscribe = onSnapshot(q, async (querySnapshot) => {
+            let notificationsData = querySnapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            }));
 
-                // Reset user's unreadNotifications count
-                const userRef = collection(db, 'users');
-                const userQuery = query(userRef, where('uid', '==', currentUser.uid));
-                const userSnapshot = await getDocs(userQuery);
-                if (!userSnapshot.empty) {
-                    const userDoc = userSnapshot.docs[0];
-                    await updateDoc(userDoc.ref, { unreadNotifications: 0 });
+            // Combine similar notifications
+            notificationsData = combineNotifications(notificationsData);
+
+            setNotifications(notificationsData);
+            setLoading(false);
+
+            // Mark notifications as read
+            const batch = writeBatch(db);
+            querySnapshot.docs.forEach((doc) => {
+                if (!doc.data().read) {
+                    batch.update(doc.ref, { read: true });
                 }
-            } catch (error) {
-                console.error('Error fetching notifications:', error);
-                setLoading(false);
-            }
-        };
+            });
+            await batch.commit();
 
-        fetchNotifications();
+            // Reset user's unreadNotifications count
+            await updateDoc(doc(db, 'users', currentUser.uid), { unreadNotifications: 0 });
+        }, (error) => {
+            console.error("Error fetching notifications: ", error);
+            setLoading(false);
+        });
+
+        return () => unsubscribe();
     }, [currentUser]);
 
-    const renderNotificationContent = (notification) => {
-        switch (notification.type) {
-            case 'follow':
-                return (
-                    <Link to={`/profile/${notification.senderId}`}>
-                        <strong>{notification.senderUsername}</strong> started following you
-                    </Link>
-                );
-            case 'like':
-                return (
-                    <Link to={`/post/${notification.contentId}`}>
-                        <strong>{notification.senderUsername}</strong> liked your post
-                    </Link>
-                );
-            case 'comment':
-                return (
-                    <Link to={`/post/${notification.contentId}`}>
-                        <strong>{notification.senderUsername}</strong> commented on your post
-                    </Link>
-                );
-            default:
-                return null;
+    const handleNotificationClick = (notification) => {
+        if (notification.type === 'follow') {
+            openProfile(notification.senderId);
+        } else if (['like', 'comment', 'reply', 'commentLike', 'replyLike'].includes(notification.type)) {
+            openPostModal(notification.contentId, notification.recipientId);
         }
+    };
+
+    const renderNotificationContent = (notification) => {
+        return (
+            <div className="notification-content">
+                <img
+                    src={notification.userAvatar || '/default-avatar.png'}
+                    alt={notification.senderUsername}
+                    className="sender-avatar"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        openProfile(notification.senderId);
+                    }}
+                />
+                <div className="notification-text">
+                    <span>
+                        <strong>{notification.senderUsername}</strong>{' '}
+                        {notification.type === 'follow' && 'started following you'}
+                        {notification.type === 'like' && 'liked your post'}
+                        {notification.type === 'comment' && 'commented on your post'}
+                        {notification.type === 'reply' && 'replied to your comment'}
+                        {notification.type === 'commentLike' && 'liked your comment'}
+                        {notification.type === 'replyLike' && 'liked your reply'}
+                        {notification.otherUsers && ` and ${notification.otherUsers} others`}
+                    </span>
+                    <span className="notification-time">
+                        {new Date(notification.createdAt.toDate()).toLocaleString()}
+                    </span>
+                </div>
+                {['like', 'comment', 'reply', 'commentLike', 'replyLike'].includes(notification.type) && notification.postImage && (
+                    <img
+                        src={notification.postImage}
+                        alt="Post"
+                        className="post-thumbnail"
+                        onClick={() => handleNotificationClick(notification)}
+                    />
+                )}
+            </div>
+        );
     };
 
     if (loading) {
@@ -84,17 +105,18 @@ const Notifications = ({ currentUser }) => {
 
     return (
         <div className="notifications-container">
-            <h2>Notifications</h2>
+            <h2 className="notifications-header">Notifications</h2>
             {notifications.length === 0 ? (
-                <p>No notifications yet.</p>
+                <p className="no-notifications">No notifications yet.</p>
             ) : (
                 <ul className="notifications-list">
                     {notifications.map((notification) => (
-                        <li key={notification.id} className={`notification-item ${notification.read ? 'read' : 'unread'}`}>
+                        <li 
+                            key={notification.id} 
+                            className={`notification-item ${notification.read ? 'read' : 'unread'}`}
+                            onClick={() => handleNotificationClick(notification)}
+                        >
                             {renderNotificationContent(notification)}
-                            <span className="notification-time">
-                                {new Date(notification.createdAt.toDate()).toLocaleString()}
-                            </span>
                         </li>
                     ))}
                 </ul>

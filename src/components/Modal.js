@@ -95,6 +95,7 @@ const Modal = React.memo(({ post, onClose, user, currentUser, onLike, onComment,
       const newReply = {
         userId: currentUser.uid,
         userName: currentUser.displayName,
+        userAvatar: user.photoURL,
         content: replyText.trim(),
         createdAt: serverTimestamp(),
       };
@@ -149,11 +150,17 @@ const Modal = React.memo(({ post, onClose, user, currentUser, onLike, onComment,
   const memoizedComments = useMemo(() => {
     return comments.map(comment => (
       <li key={comment.id} className="comment">
-        <Link to={`/profile/${comment.userId}`} onClick={() => onClose()}><strong>{sanitizeInput(comment.userName)}</strong></Link>: {sanitizeInput(comment.content)}
-        <button onClick={() => setReplyingTo(comment.id)}>Reply</button>
+        <Link to={`/profile/${comment.userId}`} onClick={() => onClose()}>
+          <strong>{sanitizeInput(comment.userName)}</strong>
+        </Link>
+        <span>{sanitizeInput(comment.content)}</span>
+        <button className="reply-button" onClick={() => setReplyingTo(comment.id)}>Reply</button>
         {comment.replies && comment.replies.map(reply => (
           <div key={reply.id} className="reply">
-            <Link to={`/profile/${reply.userId}`} onClick={() => onClose()}><strong>{sanitizeInput(reply.userName)}</strong></Link>: {sanitizeInput(reply.content)}
+            <Link to={`/profile/${reply.userId}`} onClick={() => onClose()}>
+              <strong>{sanitizeInput(reply.userName)}</strong>
+            </Link>
+            <span>{sanitizeInput(reply.content)}</span>
           </div>
         ))}
         {replyingTo === comment.id && (
@@ -197,10 +204,12 @@ const Modal = React.memo(({ post, onClose, user, currentUser, onLike, onComment,
             <p className="modal-date">
               {post?.createdAt?.toDate().toLocaleString() || 'Date unknown'}
             </p>
-            <button onClick={handleLike} className="like-button">
-              {post.likes.includes(currentUser?.uid) ? 'Unlike' : 'Like'}
-            </button>
-            <span>{post.likes.length} likes</span>
+            <div className="post-actions">
+              <button onClick={handleLike} className="like-button">
+                {post.likes.includes(currentUser?.uid) ? '❤️' : '🤍'}
+              </button>
+              <span>{post.likes.length} likes</span>
+            </div>
           </div>
         </div>
         <div className="modal-comments">

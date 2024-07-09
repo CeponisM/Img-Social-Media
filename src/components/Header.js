@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { signOut } from 'firebase/auth';
 import { auth, db } from '../firebase';
 import { collection, query, where, getDocs, limit, onSnapshot } from 'firebase/firestore';
 import './Header.css';
 
-function Header({ user }) {
+function Header({ user, darkMode, toggleDarkMode }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -41,20 +41,7 @@ function Header({ user }) {
     };
   }, []);
 
-  useEffect(() => {
-    const delayDebounceFn = setTimeout(() => {
-      if (searchTerm) {
-        handleSearch();
-      } else {
-        setSearchResults([]);
-        setShowDropdown(false);
-      }
-    }, 300);
-
-    return () => clearTimeout(delayDebounceFn);
-  }, [searchTerm]);
-
-  const handleSearch = async () => {
+  const handleSearch = useCallback(async () => {
     if (!searchTerm.trim()) return;
 
     try {
@@ -71,7 +58,20 @@ function Header({ user }) {
     } catch (error) {
       console.error('Error searching users:', error);
     }
-  };
+  }, [searchTerm]);
+
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      if (searchTerm) {
+        handleSearch();
+      } else {
+        setSearchResults([]);
+        setShowDropdown(false);
+      }
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchTerm, handleSearch]);
 
   const handleSelectUser = (userId) => {
     navigate(`/profile/${userId}`);
@@ -92,7 +92,7 @@ function Header({ user }) {
   return (
     <header className="header">
       <div className="header-content">
-        <Link to="/" className="logo"><h1>VSCO-Style App</h1></Link>
+        <Link to="/" className="logo"><h1>VSCO-Clone</h1></Link>
         <nav>
           {user ? (
             <>
@@ -130,6 +130,9 @@ function Header({ user }) {
               <Link to="/signup">Sign Up</Link>
             </>
           )}
+          <button onClick={toggleDarkMode} className="dark-mode-toggle">
+            {darkMode ? '☀️' : '🌙'}
+          </button>
         </nav>
       </div>
     </header>

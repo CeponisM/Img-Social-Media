@@ -8,7 +8,7 @@ import { createNotification } from '../utils/notificationHelpers';
 import Modal from './Modal';
 import './Profile.css';
 
-function Profile({ currentUser }) {
+function Profile({ currentUser, modalPost, setModalPost }) {
   const { userId } = useParams();
   const [user, setUser] = useState(null);
   const [posts, setPosts] = useState([]);
@@ -85,7 +85,7 @@ function Profile({ currentUser }) {
           following: arrayUnion(userId)
         });
         setFollowers(prev => prev + 1);
-        await createNotification(userId, currentUser.uid, 'follow');
+        await createNotification(userId, currentUser.uid, 'follow', null, currentUser.photoURL, currentUser.displayName, null);
       }
       setIsFollowing(!isFollowing);
     } catch (error) {
@@ -164,6 +164,15 @@ function Profile({ currentUser }) {
     };
   }, [fetchUserData, fetchUserPosts]);
 
+  useEffect(() => {
+    console.log('modalPost in Profile:', modalPost);
+    if (modalPost) {
+      console.log('Setting selectedPost:', modalPost);
+      setSelectedPost(modalPost);
+      setModalPost(null);
+    }
+  }, [modalPost, setModalPost]);
+
   const handleProfilePictureUpload = useCallback(async (event) => {
     if (!currentUser || currentUser.uid !== userId) return;
 
@@ -209,6 +218,7 @@ function Profile({ currentUser }) {
       const postRef = doc(db, 'posts', postId);
       const postDoc = await getDoc(postRef);
       const currentLikes = postDoc.data().likes || [];
+      const postOwnerId = postDoc.data().userId;
 
       if (currentLikes.includes(currentUser.uid)) {
         await updateDoc(postRef, {
@@ -218,8 +228,8 @@ function Profile({ currentUser }) {
         await updateDoc(postRef, {
           likes: arrayUnion(currentUser.uid)
         });
-        if (postDoc.data().userId !== currentUser.uid) {
-          await createNotification(postDoc.data().userId, currentUser.uid, 'like', postId);
+        if (postOwnerId !== currentUser.uid) {
+          await createNotification(postOwnerId, currentUser.uid, 'like', postId, currentUser.photoURL, currentUser.displayName, postDoc.data().imageUrls?.[0] || postDoc.data().imageUrl);
         }
       }
 
@@ -227,9 +237,9 @@ function Profile({ currentUser }) {
         post.id === postId
           ? {
             ...post,
-            likes: post.likes.includes(currentUser.uid)
-              ? post.likes.filter(id => id !== currentUser.uid)
-              : [...post.likes, currentUser.uid]
+            likes: currentLikes.includes(currentUser.uid)
+              ? currentLikes.filter(id => id !== currentUser.uid)
+              : [...currentLikes, currentUser.uid]
           }
           : post
       ));
@@ -237,9 +247,9 @@ function Profile({ currentUser }) {
       if (selectedPost && selectedPost.id === postId) {
         setSelectedPost(prevPost => ({
           ...prevPost,
-          likes: prevPost.likes.includes(currentUser.uid)
-            ? prevPost.likes.filter(id => id !== currentUser.uid)
-            : [...prevPost.likes, currentUser.uid]
+          likes: currentLikes.includes(currentUser.uid)
+            ? currentLikes.filter(id => id !== currentUser.uid)
+            : [...currentLikes, currentUser.uid]
         }));
       }
     } catch (error) {
@@ -260,6 +270,7 @@ function Profile({ currentUser }) {
         postId,
         userId: currentUser.uid,
         userName: currentUser.displayName,
+        userAvatar: currentUser.photoURL,
         content: commentText,
         createdAt: serverTimestamp(),
         likes: [],
@@ -274,8 +285,10 @@ function Profile({ currentUser }) {
       });
 
       const postDoc = await getDoc(postRef);
+      const firstImageUrl = postDoc.data().imageUrls?.[0] || postDoc.data().imageUrl;
+
       if (postDoc.data().userId !== currentUser.uid) {
-        await createNotification(postDoc.data().userId, currentUser.uid, 'comment', postId);
+        await createNotification(postDoc.data().userId, currentUser.uid, 'comment', postId, currentUser.photoURL, currentUser.displayName, firstImageUrl);
       }
 
       setPosts(prevPosts => prevPosts.map(post =>
@@ -287,7 +300,8 @@ function Profile({ currentUser }) {
       if (selectedPost && selectedPost.id === postId) {
         setSelectedPost(prevPost => ({
           ...prevPost,
-          commentCount: (prevPost.commentCount || 0) + 1
+          commentCount: (prevPost.commentCount || 0) + 1,
+          comments: [...(prevPost.comments || []), newComment]
         }));
       }
 
@@ -298,17 +312,121 @@ function Profile({ currentUser }) {
     }
   }, [currentUser, navigate, selectedPost]);
 
+  const handleReply = useCallback(async (postId, commentId, replyText) => {
+    if (!currentUser) {
+      navigate('/signin');
+      return;
+    }
+
+    try {
+      const replyRef = await addDoc(collection(db, 'comments', commentId, 'replies'), {
+        postId,
+        userId: currentUser.uid,
+        userName: currentUser.displayName,
+        userAvatar: currentUser.photoURL,
+        content: replyText,
+        createdAt: serverTimestamp(),
+        likes: [],
+      });
+
+      const newReply = { id: replyRef.id, ...replyRef };
+
+      const postRef = doc(db, 'posts', postId);
+      await updateDoc(postRef, {
+        commentCount: increment(1)
+      });
+
+      const commentDoc = await getDoc(doc(db, 'comments', commentId));
+      const commentOwnerId = commentDoc.data().userId;
+
+      if (commentOwnerId !== currentUser.uid) {
+        const postDoc = await getDoc(postRef);
+        const firstImageUrl = postDoc.data().imageUrls?.[0] || postDoc.data().imageUrl;
+        await createNotification(commentOwnerId, currentUser.uid, 'reply', postId, currentUser.photoURL, currentUser.displayName, firstImageUrl);
+      }
+
+      if (selectedPost && selectedPost.id === postId) {
+        setSelectedPost(prevPost => ({
+          ...prevPost,
+          commentCount: (prevPost.commentCount || 0) + 1,
+          comments: prevPost.comments.map(comment =>
+            comment.id === commentId
+              ? { ...comment, replies: [...(comment.replies || []), newReply] }
+              : comment
+          )
+        }));
+      }
+
+      return newReply;
+    } catch (error) {
+      console.error('Error adding reply:', error);
+      setError('Failed to add reply');
+    }
+  }, [currentUser, navigate, selectedPost]);
+
+  const handleCommentLike = useCallback(async (postId, commentId, isReply = false, parentCommentId = null) => {
+    if (!currentUser) {
+      navigate('/signin');
+      return;
+    }
+
+    try {
+      const commentRef = isReply
+        ? doc(db, 'comments', parentCommentId, 'replies', commentId)
+        : doc(db, 'comments', commentId);
+
+      const commentDoc = await getDoc(commentRef);
+      const currentLikes = commentDoc.data().likes || [];
+      const commentOwnerId = commentDoc.data().userId;
+
+      if (currentLikes.includes(currentUser.uid)) {
+        await updateDoc(commentRef, { likes: arrayRemove(currentUser.uid) });
+      } else {
+        await updateDoc(commentRef, { likes: arrayUnion(currentUser.uid) });
+        if (commentOwnerId !== currentUser.uid) {
+          const postDoc = await getDoc(doc(db, 'posts', postId));
+          const firstImageUrl = postDoc.data().imageUrls?.[0] || postDoc.data().imageUrl;
+          await createNotification(commentOwnerId, currentUser.uid, isReply ? 'replyLike' : 'commentLike', postId, currentUser.photoURL, currentUser.displayName, firstImageUrl);
+        }
+      }
+
+      if (selectedPost && selectedPost.id === postId) {
+        setSelectedPost(prevPost => ({
+          ...prevPost,
+          comments: prevPost.comments.map(comment =>
+            isReply && comment.id === parentCommentId
+              ? {
+                ...comment,
+                replies: comment.replies.map(reply =>
+                  reply.id === commentId
+                    ? { ...reply, likes: currentLikes.includes(currentUser.uid) ? currentLikes.filter(id => id !== currentUser.uid) : [...currentLikes, currentUser.uid] }
+                    : reply
+                )
+              }
+              : comment.id === commentId
+                ? { ...comment, likes: currentLikes.includes(currentUser.uid) ? currentLikes.filter(id => id !== currentUser.uid) : [...currentLikes, currentUser.uid] }
+                : comment
+          )
+        }));
+      }
+    } catch (error) {
+      console.error('Error updating comment like:', error);
+      setError('Failed to update comment like');
+    }
+  }, [currentUser, navigate, selectedPost]);
+
+
   const renderPostContent = useCallback((post) => {
     if (!post) return null;
 
     if (post.imageUrls && post.imageUrls.length > 0) {
       if (post.imageUrls.length > 1) {
-        return <img src={post.imageUrls[0]} alt="Loop thumbnail" className="post-thumbnail" loading="lazy" />;
+        return <img src={post.imageUrls[0]} alt="Loop thumbnail" className="profile-post-thumbnail" loading="lazy" />;
       } else {
-        return <img src={post.imageUrls[0]} alt="Post content" className="post-thumbnail" loading="lazy" />;
+        return <img src={post.imageUrls[0]} alt="Post content" className="profile-post-thumbnail" loading="lazy" />;
       }
     } else if (post.imageUrl) {
-      return <img src={post.imageUrl} alt="Post content" className="post-thumbnail" loading="lazy" />;
+      return <img src={post.imageUrl} alt="Post content" className="profile-post-thumbnail" loading="lazy" />;
     } else {
       return <div className="no-image">No image available</div>;
     }
@@ -397,7 +515,6 @@ function Profile({ currentUser }) {
             {currentUser && currentUser.uid === user.id ? (
               <>
                 <button onClick={handleCreateNewLoop} className="create-loop-btn">Create New Loop</button>
-                <button onClick={handleSignOut} className="sign-out-btn">Sign Out</button>
               </>
             ) : (
               <>

@@ -17,7 +17,7 @@ function Home({ user }) {
       fetchFollowingIds();
     }
   }, [user]);
-  
+
   const fetchFollowingIds = async () => {
     try {
       const userDocRef = doc(db, 'users', user.uid);
@@ -41,13 +41,13 @@ function Home({ user }) {
         orderBy('createdAt', 'desc'),
         limit(5)
       );
-  
+
       const querySnapshot = await getDocs(q);
       const fetchedPosts = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }));
-  
+
       setPosts(fetchedPosts);
       setLastVisible(querySnapshot.docs[querySnapshot.docs.length - 1]);
       setHasMore(querySnapshot.docs.length === 5);
@@ -57,7 +57,7 @@ function Home({ user }) {
       setLoading(false);
     }
   }, [followingIds, user]);
-  
+
   const fetchMorePosts = useCallback(async () => {
     if (!lastVisible) return;
     try {
@@ -70,13 +70,13 @@ function Home({ user }) {
         startAfter(lastVisible),
         limit(5)
       );
-  
+
       const querySnapshot = await getDocs(q);
       const newPosts = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }));
-  
+
       setPosts(prevPosts => [...prevPosts, ...newPosts]);
       setLastVisible(querySnapshot.docs[querySnapshot.docs.length - 1]);
       setHasMore(querySnapshot.docs.length === 5);

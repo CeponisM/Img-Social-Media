@@ -1,12 +1,46 @@
+:root {
+    --bg-color: #ffffff;
+    --text-color: #262626;
+    --secondary-text-color: #8e8e8e;
+    --unread-bg: #fafafa;
+    --read-bg: #ffffff;
+    --hover-bg: #f7f7f7;
+    --border-color: #dbdbdb;
+    --time-color: #8e8e8e;
+    --primary-color: #0095f6;
+}
+
+.dark-mode {
+    --bg-color: #121212;
+    --text-color: #fafafa;
+    --secondary-text-color: #a8a8a8;
+    --unread-bg: #1c1c1c;
+    --read-bg: #121212;
+    --hover-bg: #1c1c1c;
+    --border-color: #2c2c2c;
+    --time-color: #a8a8a8;
+}
+
 .notifications-container {
     max-width: 600px;
     margin: 0 auto;
     padding: 20px;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+}
+
+.notifications-header {
+    font-size: 24px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border-color);
 }
 
 .notifications-loading {
     text-align: center;
-    font-size: 18px;
+    font-size: 16px;
+    color: var(--secondary-text-color);
     margin-top: 20px;
 }
 
@@ -16,34 +50,75 @@
 }
 
 .notification-item {
-    background-color: #f8f8f8;
-    border-radius: 8px;
-    padding: 15px;
-    margin-bottom: 10px;
-    transition: background-color 0.3s ease;
+    background-color: var(--read-bg);
+    padding: 16px;
+    margin-bottom: 8px;
+    transition: all 0.2s ease;
+    border-bottom: 1px solid var(--border-color);
+    cursor: pointer;
 }
 
 .notification-item:hover {
-    background-color: #f0f0f0;
+    background-color: var(--hover-bg);
 }
 
 .notification-item.unread {
-    background-color: #e6f3ff;
+    background-color: var(--unread-bg);
 }
 
-.notification-item a {
-    color: #333;
-    text-decoration: none;
-    font-size: 16px;
+.notification-content {
+    display: flex;
+    align-items: center;
 }
 
-.notification-item a:hover {
-    text-decoration: underline;
+.sender-avatar {
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    margin-right: 12px;
+    object-fit: cover;
+}
+
+.notification-text {
+    flex-grow: 1;
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+.notification-text strong {
+    font-weight: 600;
 }
 
 .notification-time {
     display: block;
     font-size: 12px;
-    color: #888;
-    margin-top: 5px;
+    color: var(--time-color);
+    margin-top: 4px;
+}
+
+.post-thumbnail {
+    width: 44px;
+    height: 44px;
+    object-fit: cover;
+    margin-left: 12px;
+}
+
+@media (max-width: 600px) {
+    .notifications-container {
+        padding: 12px;
+    }
+
+    .notification-item {
+        padding: 12px;
+    }
+
+    .sender-avatar,
+    .post-thumbnail {
+        width: 36px;
+        height: 36px;
+    }
+
+    .notification-text {
+        font-size: 13px;
+    }
 }

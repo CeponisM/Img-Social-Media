@@ -1,29 +1,41 @@
-import { collection, addDoc, serverTimestamp, query, where, getDocs, updateDoc, arrayUnion } from 'firebase/firestore';
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 
-export const createNotification = async (recipientId, senderId, type, contentId = null) => {
+export const createNotification = async (recipientId, senderId, type, contentId, userAvatar, senderUsername, postImage) => {
     try {
-        const notificationRef = collection(db, 'notifications');
-        await addDoc(notificationRef, {
+        await addDoc(collection(db, 'notifications'), {
             recipientId,
             senderId,
             type,
             contentId,
+            userAvatar,
+            senderUsername,
+            postImage,
             createdAt: serverTimestamp(),
-            read: false,
+            read: false
         });
-
-        // Update user's unreadNotifications count
-        const userRef = collection(db, 'users');
-        const q = query(userRef, where('uid', '==', recipientId));
-        const querySnapshot = await getDocs(q);
-        if (!querySnapshot.empty) {
-            const userDoc = querySnapshot.docs[0];
-            await updateDoc(userDoc.ref, {
-                unreadNotifications: arrayUnion(1)
-            });
-        }
     } catch (error) {
         console.error('Error creating notification:', error);
     }
+};
+
+export const combineNotifications = (notifications) => {
+    const combinedNotifications = [];
+    const notificationMap = new Map();
+
+    notifications.forEach(notification => {
+        const key = `${notification.type}-${notification.contentId}`;
+        if (notificationMap.has(key)) {
+            const existingNotification = notificationMap.get(key);
+            existingNotification.otherUsers = (existingNotification.otherUsers || 0) + 1;
+        } else {
+            notificationMap.set(key, { ...notification, otherUsers: 0 });
+        }
+    });
+
+    notificationMap.forEach(notification => {
+        combinedNotifications.push(notification);
+    });
+
+    return combinedNotifications;
 };

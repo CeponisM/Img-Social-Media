@@ -1,13 +1,35 @@
+:root {
+    --profile-bg: #ffffff;
+    --profile-text: #262626;
+    --profile-secondary-text: #8e8e8e;
+    --profile-border: #dbdbdb;
+}
+
+.dark-mode {
+    --profile-bg: #1e1e1e;
+    --profile-text: #ffffff;
+    --profile-secondary-text: #b0b0b0;
+    --profile-border: #383838;
+}
+
 .profile {
-    max-width: 935px;
-    margin: 0;
-    padding: 30px 20px;
+    display: grid;
+    grid-template-columns: 1fr min(935px, 100%) 1fr;
+    gap: 20px;
+    background-color: var(--profile-bg);
+    color: var(--profile-text);
+}
+
+.profile>* {
+    grid-column: 2;
 }
 
 .profile-header {
-    display: flex;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 30px;
     align-items: center;
-    margin-bottom: 44px;
+    background-color: var(--secondary-bg);
 }
 
 .profile-picture {
@@ -15,7 +37,40 @@
     height: 150px;
     border-radius: 50%;
     object-fit: cover;
-    margin-right: 30px;
+}
+
+.posts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 20px;
+}
+
+.post {
+    position: relative;
+    aspect-ratio: 1;
+    overflow: hidden;
+    border-radius: 8px;
+    transition: transform 0.3s ease;
+}
+
+.post:hover {
+    transform: scale(1.05);
+}
+
+.skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+    0% {
+        background-position: 200% 0;
+    }
+
+    100% {
+        background-position: -200% 0;
+    }
 }
 
 .profile-info {
@@ -26,6 +81,7 @@
     font-size: 28px;
     font-weight: 300;
     margin-bottom: 12px;
+    color: var(--profile-text);
 }
 
 .profile-stats {
@@ -35,6 +91,7 @@
 
 .profile-stat {
     margin-right: 40px;
+    color: var(--profile-secondary-text);
 }
 
 .profile-stat-count {
@@ -44,6 +101,7 @@
 .profile-bio {
     font-size: 16px;
     line-height: 1.5;
+    color: var(--profile-text);
 }
 
 .profile-actions {
@@ -53,33 +111,21 @@
 
 .profile-actions button {
     padding: 6px 16px;
-    border: 1px solid #dbdbdb;
+    border: 1px solid var(--profile-border);
     border-radius: 4px;
-    background-color: #fff;
+    background-color: var(--profile-bg);
+    color: var(--profile-text);
     font-weight: 600;
     cursor: pointer;
 }
 
 .profile-actions button.primary {
-    background-color: #0095f6;
-    color: #fff;
+    background-color: var(--accent-color);
+    color: var(--profile-bg);
     border: none;
 }
 
-.posts-grid {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 28px;
-}
-
-.post {
-    position: relative;
-    aspect-ratio: 1 / 1;
-    overflow: hidden;
-    cursor: pointer;
-}
-
-.post-thumbnail {
+.profile-post-thumbnail {
     width: 100%;
     height: 100%;
     object-fit: cover;
@@ -98,10 +144,6 @@
     align-items: center;
     opacity: 0;
     transition: opacity 0.2s ease;
-}
-
-.post:hover .post-overlay {
-    opacity: 1;
 }
 
 .post-stats {

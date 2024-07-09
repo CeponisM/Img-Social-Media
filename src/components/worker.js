@@ -110,38 +110,26 @@ async function processFrame(src, prevImg, index, totalFrames, processingChoices)
     if (processingChoices.align && prevImg) {
       console.log('Aligning image...');
       result = await alignImage(result, prevImg);
-      console.log('Alignment complete, size:', result.cols, 'x', result.rows);
-    }
-    if (processingChoices.warp) {
-      console.log('Warping image...');
-      result = await warpImage(result, index, totalFrames);
-      console.log('Warping complete, size:', result.cols, 'x', result.rows);
-    }
-    if (processingChoices.blend && prevImg) {
-      console.log('Blending image...');
-      result = await blendImage(result, prevImg);
-      console.log('Blending complete, size:', result.cols, 'x', result.rows);
-    }
-    if (processingChoices.colorCorrect) {
-      console.log('Color correcting image...');
-      const corrected = await correctColorAndExposure(result);
-      result.delete();
-      result = corrected;
-      console.log('Color correction complete, size:', result.cols, 'x', result.rows);
-    }
-    if (processingChoices.stabilize && prevImg) {
-      console.log('Stabilizing image...');
-      const stabilized = await stabilizeImage(result, prevImg);
-      result.delete();
-      result = stabilized;
-      console.log('Stabilization complete, size:', result.cols, 'x', result.rows);
     }
     if (processingChoices.enhance) {
       console.log('Enhancing image...');
-      const enhanced = await enhanceImage(result);
-      result.delete();
-      result = enhanced;
-      console.log('Enhancement complete, size:', result.cols, 'x', result.rows);
+      result = await enhanceImage(result);
+    }
+    if (processingChoices.colorGrade) {
+      console.log('Color grading image...');
+      result = await colorGradeImage(result);
+    }
+    if (processingChoices.sharpen) {
+      console.log('Sharpening image...');
+      result = await sharpenImage(result);
+    }
+    if (processingChoices.denoise) {
+      console.log('Denoising image...');
+      result = await denoiseImage(result);
+    }
+    if (processingChoices.vignette) {
+      console.log('Applying vignette...');
+      result = await applyVignette(result);
     }
 
     // Ensure the result is in the correct format (8-bit per channel, 4 channels)
@@ -374,113 +362,128 @@ async function stabilizeImage(src, prevImg) {
 }
 
 async function enhanceImage(src) {
-  console.log('Enhancing image for social media. Source image properties:',
-              'size:', src.cols + 'x' + src.rows,
-              'type:', src.type(),
-              'channels:', src.channels());
-
-  let rgbImage, channels, blurred, glowEffect, brightened, tinted, mask, vignette;
-
   try {
-    // Convert to RGB color space if not already
-    rgbImage = new cv.Mat();
-    if (src.channels() === 4) {
-      cv.cvtColor(src, rgbImage, cv.COLOR_RGBA2RGB);
-    } else if (src.channels() === 3) {
-      src.copyTo(rgbImage);
-    } else {
-      throw new Error(`Unexpected number of channels: ${src.channels()}`);
-    }
-
-    console.log('Converted to RGB. Image properties:',
-                'size:', rgbImage.cols + 'x' + rgbImage.rows,
-                'type:', rgbImage.type(),
-                'channels:', rgbImage.channels());
-
-    // Split the image into channels
-    channels = new cv.MatVector();
-    cv.split(rgbImage, channels);
-
-    console.log('Split channels. Number of channels:', channels.size());
-
-    // Adjust individual color channels
-    for (let i = 0; i < 3; i++) {
-      let channel = channels.get(i);
-      console.log(`Processing channel ${i}. Size: ${channel.cols}x${channel.rows}, Type: ${channel.type()}`);
-      
-      // Increase contrast
-      cv.convertScaleAbs(channel, channel, 1.2, 10);
-      
-      // Adjust gamma (midtones)
-      let lut = new cv.Mat(1, 256, cv.CV_8U);
-      for (let j = 0; j < 256; j++) {
-        lut.data[j] = Math.pow(j / 255, 0.85) * 255;
-      }
-      cv.LUT(channel, lut, channel);
-      lut.delete();
-    }
-
-    console.log('Channels processed');
-
-    // Merge channels back
-    cv.merge(channels, rgbImage);
-
-    console.log('Channels merged');
-
-    // Apply slight blur for softer look
-    blurred = new cv.Mat();
-    cv.GaussianBlur(rgbImage, blurred, new cv.Size(0, 0), 1.5, 1.5);
-
-    console.log('Blur applied');
-
-    // Blend original and blurred image for "glow" effect
-    glowEffect = new cv.Mat();
-    cv.addWeighted(rgbImage, 0.75, blurred, 0.25, 0, glowEffect);
-
-    console.log('Glow effect applied');
-
-    // Increase overall brightness and contrast
-    brightened = new cv.Mat();
-    cv.convertScaleAbs(glowEffect, brightened, 1.1, 15);
-
-    console.log('Brightness and contrast adjusted');
-
-    // Apply slight color tint (warm filter)
-    tinted = new cv.Mat();
-    let M = cv.matFromArray(3, 3, cv.CV_32F, [1.1, 0, 0, 0, 1.07, 0, 0, 0, 1.05]);
-    cv.transform(brightened, tinted, M);
-    M.delete();
-
-    console.log('Color tint applied');
-
-    // Apply vignette effect
-    let center = new cv.Point(src.cols / 2, src.rows / 2);
-    mask = new cv.Mat(src.rows, src.cols, cv.CV_8U);
-    for (let y = 0; y < src.rows; y++) {
-      for (let x = 0; x < src.cols; x++) {
-        let distance = Math.sqrt(Math.pow(x - center.x, 2) + Math.pow(y - center.y, 2));
-        let value = Math.max(0, Math.min(255, 255 - (distance / Math.max(center.x, center.y)) * 70));
-        mask.ucharPtr(y, x)[0] = value;
-      }
-    }
-    vignette = new cv.Mat();
-    cv.addWeighted(tinted, 0.8, mask, 0.2, 0, vignette);
-
-    console.log('Vignette effect applied');
-
-    console.log('Social media image enhancement completed successfully');
-    return vignette;
+    let result = src.clone();
+    
+    // Convert to LAB color space
+    let lab = new cv.Mat();
+    cv.cvtColor(result, lab, cv.COLOR_BGR2Lab);
+    
+    // Split channels
+    let channels = new cv.MatVector();
+    cv.split(lab, channels);
+    
+    // Enhance L channel (brightness)
+    let l_channel = channels.get(0);
+    cv.equalizeHist(l_channel, l_channel);
+    
+    // Merge channels
+    cv.merge(channels, lab);
+    
+    // Convert back to BGR
+    cv.cvtColor(lab, result, cv.COLOR_Lab2BGR);
+    
+    // Adjust contrast
+    let alpha = 1.2; // Contrast control (1.0-3.0)
+    let beta = 10;   // Brightness control (0-100)
+    cv.convertScaleAbs(result, result, alpha, beta);
+    
+    // Clean up
+    lab.delete();
+    channels.delete();
+    
+    return result;
   } catch (error) {
     console.error('Error in enhanceImage:', error);
-    throw error;
-  } finally {
-    // Cleanup
-    const matsToDelete = [rgbImage, channels, blurred, glowEffect, brightened, tinted, mask];
-    for (let mat of matsToDelete) {
-      if (mat && !mat.isDeleted()) {
-        mat.delete();
-      }
+    return src.clone();
+  }
+}
+
+async function colorGradeImage(src) {
+  try {
+    let result = src.clone();
+    
+    // Convert to HSV
+    let hsv = new cv.Mat();
+    cv.cvtColor(result, hsv, cv.COLOR_BGR2HSV);
+    
+    // Split channels
+    let channels = new cv.MatVector();
+    cv.split(hsv, channels);
+    
+    // Adjust hue (rotate colors)
+    let h_channel = channels.get(0);
+    cv.add(h_channel, new cv.Scalar(30), h_channel); // Rotate hue by 30 degrees
+    
+    // Increase saturation
+    let s_channel = channels.get(1);
+    cv.multiply(s_channel, new cv.Scalar(1.2), s_channel);
+    
+    // Merge channels
+    cv.merge(channels, hsv);
+    
+    // Convert back to BGR
+    cv.cvtColor(hsv, result, cv.COLOR_HSV2BGR);
+    
+    // Clean up
+    hsv.delete();
+    channels.delete();
+    
+    return result;
+  } catch (error) {
+    console.error('Error in colorGradeImage:', error);
+    return src.clone();
+  }
+}
+
+async function sharpenImage(src) {
+  try {
+    let sharpened = new cv.Mat();
+    let kernel = cv.Mat.ones(3, 3, cv.CV_32F);
+    kernel.floatPtr(1, 1)[0] = 5;
+    cv.filter2D(src, sharpened, -1, kernel, new cv.Point(-1, -1), 0, cv.BORDER_DEFAULT);
+    kernel.delete();
+    return sharpened;
+  } catch (error) {
+    console.error('Error in sharpenImage:', error);
+    return src.clone();
+  }
+}
+
+async function denoiseImage(src) {
+  try {
+    let denoised = new cv.Mat();
+    cv.fastNlMeansDenoisingColored(src, denoised, 10, 10, 7, 21);
+    return denoised;
+  } catch (error) {
+    console.error('Error in denoiseImage:', error);
+    return src.clone();
+  }
+}
+
+async function applyVignette(src) {
+  try {
+    let result = src.clone();
+    let rows = result.rows;
+    let cols = result.cols;
+    let kernel_x = cv.getGaussianKernel(cols, cols * 0.3);
+    let kernel_y = cv.getGaussianKernel(rows, rows * 0.3);
+    let kernel = kernel_y.matMul(kernel_x.t());
+    let mask = new cv.Mat();
+    cv.normalize(kernel, mask, 0, 1, cv.NORM_MINMAX);
+    let channels = new cv.MatVector();
+    cv.split(result, channels);
+    for (let i = 0; i < 3; i++) {
+      cv.multiply(channels.get(i), mask, channels.get(i));
     }
+    cv.merge(channels, result);
+    kernel.delete();
+    mask.delete();
+    channels.delete();
+    return result;
+  } catch (error) {
+    console.error('Error in applyVignette:', error);
+    return src.clone();
   }
 }
 

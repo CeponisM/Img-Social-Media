@@ -1,27 +1,60 @@
+:root {
+    --primary-bg: #ffffff;
+    --secondary-bg: #fafafa;
+    --primary-text: #262626;
+    --secondary-text: #8e8e8e;
+    --border-color: #dbdbdb;
+    --accent-color: #0095f6;
+    --error-color: #ed4956;
+    --header-height: 60px;
+}
+
+.dark-mode {
+    --primary-bg: #121212;
+    --secondary-bg: #1e1e1e;
+    --primary-text: #ffffff;
+    --secondary-text: #b0b0b0;
+    --border-color: #383838;
+    --accent-color: #1da1f2;
+    --error-color: #ff6b6b;
+}
+
+body {
+    margin-top: var(--header-height);
+    background-color: var(--primary-bg);
+    border-bottom: 1px solid var(--border-color);
+    color: var(--primary-text);
+    transition: background-color 0.3s, color 0.3s;
+}
+
 .header {
-    background-color: #ffffff;
-    border-bottom: 1px solid #dbdbdb;
+    background-color: var(--primary-bg);
+    border-bottom: 1px solid var(--border-color);
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
     z-index: 1000;
+    height: var(--header-height);
+    transition: background-color 0.3s, border-color 0.3s;
 }
 
 .header-content {
     max-width: 975px;
     margin: 0 auto;
-    padding: 12px 20px;
+    padding: 0 20px;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    height: 100%;
 }
 
 .logo {
     font-size: 24px;
     font-weight: bold;
-    color: #262626;
+    color: var(--primary-text);
     text-decoration: none;
+    transition: color 0.3s;
 }
 
 nav {
@@ -32,9 +65,10 @@ nav {
 nav a {
     margin-left: 22px;
     text-decoration: none;
-    color: #262626;
+    color: var(--primary-text);
     font-size: 14px;
     font-weight: 600;
+    transition: color 0.3s;
 }
 
 .notifications-link {
@@ -45,8 +79,8 @@ nav a {
     position: absolute;
     top: -8px;
     right: -8px;
-    background-color: #ed4956;
-    color: white;
+    background-color: var(--error-color);
+    color: var(--primary-bg);
     border-radius: 50%;
     padding: 2px 6px;
     font-size: 11px;
@@ -62,16 +96,19 @@ nav a {
 }
 
 .search-container input {
-    border: 1px solid #dbdbdb;
+    border: 1px solid var(--border-color);
     border-radius: 3px;
     padding: 6px 10px;
     font-size: 14px;
     width: 200px;
+    background-color: var(--secondary-bg);
+    color: var(--primary-text);
+    transition: background-color 0.3s, color 0.3s, border-color 0.3s;
 }
 
 .search-container button {
-    background-color: #0095f6;
-    color: white;
+    background-color: var(--accent-color);
+    color: var(--primary-bg);
     border: none;
     border-radius: 3px;
     padding: 6px 10px;
@@ -79,6 +116,7 @@ nav a {
     font-size: 14px;
     font-weight: 600;
     cursor: pointer;
+    transition: background-color 0.3s;
 }
 
 .search-dropdown {
@@ -86,8 +124,8 @@ nav a {
     top: 100%;
     left: 0;
     right: 0;
-    background-color: white;
-    border: 1px solid #dbdbdb;
+    background-color: var(--primary-bg);
+    border: 1px solid var(--border-color);
     border-radius: 3px;
     box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
     max-height: 300px;
@@ -100,10 +138,11 @@ nav a {
     align-items: center;
     padding: 8px 16px;
     cursor: pointer;
+    transition: background-color 0.3s;
 }
 
 .search-dropdown li:hover {
-    background-color: #fafafa;
+    background-color: var(--secondary-bg);
 }
 
 .search-dropdown img {
@@ -115,12 +154,12 @@ nav a {
 
 .search-dropdown span {
     font-size: 14px;
-    color: #262626;
+    color: var(--primary-text);
 }
 
 .sign-out-btn {
-    background-color: #ed4956;
-    color: white;
+    background-color: var(--error-color);
+    color: var(--primary-bg);
     border: none;
     border-radius: 3px;
     padding: 6px 12px;
@@ -128,8 +167,49 @@ nav a {
     font-weight: 600;
     cursor: pointer;
     margin-left: 22px;
+    transition: background-color 0.3s;
 }
 
 .sign-out-btn:hover {
-    background-color: #c13584;
+    opacity: 0.9;
+}
+
+.dark-mode-toggle {
+    background: none;
+    border: none;
+    color: var(--primary-text);
+    font-size: 20px;
+    cursor: pointer;
+    margin-left: 22px;
+    transition: color 0.3s;
+}
+
+@media (max-width: 768px) {
+    .header-content {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 10px 20px;
+    }
+
+    nav {
+        margin-top: 10px;
+        flex-wrap: wrap;
+    }
+
+    nav a,
+    .sign-out-btn,
+    .dark-mode-toggle {
+        margin-left: 0;
+        margin-right: 15px;
+        margin-bottom: 10px;
+    }
+
+    .search-container {
+        width: 100%;
+        margin-top: 10px;
+    }
+
+    .search-container input {
+        width: calc(100% - 70px);
+    }
 }
