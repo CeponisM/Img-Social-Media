@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { db } from '../firebase';
-import { collection, addDoc, query, where, orderBy, onSnapshot, serverTimestamp, limit, getDocs, updateDoc, arrayUnion, arrayRemove, doc } from 'firebase/firestore';
+import { collection, addDoc, query, where, orderBy, onSnapshot, serverTimestamp, limit, getDoc, getDocs, updateDoc, arrayUnion, arrayRemove, doc } from 'firebase/firestore';
 import { Link, useNavigate } from 'react-router-dom';
 import DOMPurify from 'dompurify';
 import './Modal.css';
@@ -11,55 +11,73 @@ const Modal = React.memo(({ post, onClose, user, currentUser, onLike, onComment,
   const [currentFrame, setCurrentFrame] = useState(0);
   const [error, setError] = useState(null);
   const [replyingTo, setReplyingTo] = useState(null);
-  const [slectedPost, setSelectedPost] = useState(null);
-  const navigate = useNavigate();
+  const [expandedComments, setExpandedComments] = useState({});
 
   const sanitizeInput = useCallback((input) => {
     return DOMPurify.sanitize(input);
   }, []);
+
+  const fetchUserData = async (userId) => {
+    try {
+      const userDocRef = doc(db, 'users', userId);
+      const userDocSnap = await getDoc(userDocRef);
+      if (userDocSnap.exists()) {
+        return userDocSnap.data();
+      }
+      return null;
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+      return null;
+    }
+  };
 
   useEffect(() => {
     if (!post?.id) {
       setError('Invalid post data');
       return;
     }
-
+  
     const commentsQuery = query(
       collection(db, 'comments'),
       where('postId', '==', post.id),
       orderBy('createdAt', 'desc'),
       limit(50)
     );
-
+  
     const unsubscribe = onSnapshot(commentsQuery, async (snapshot) => {
-      const fetchedComments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-
+      const fetchedComments = await Promise.all(snapshot.docs.map(async (doc) => {
+        const commentData = { id: doc.id, ...doc.data() };
+        const userData = await fetchUserData(commentData.userId);
+        return {
+          ...commentData,
+          userAvatar: userData?.photoURL || '/default-avatar.png',
+          userName: userData?.username || 'Unknown User'
+        };
+      }));
+  
       const commentsWithReplies = await Promise.all(fetchedComments.map(async (comment) => {
         const repliesQuery = query(
           collection(db, 'comments', comment.id, 'replies'),
           orderBy('createdAt', 'asc')
         );
-        const unsubscribeReplies = onSnapshot(repliesQuery, (repliesSnapshot) => {
-          const replies = repliesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          setComments(prevComments =>
-            prevComments.map(prevComment =>
-              prevComment.id === comment.id ? { ...prevComment, replies } : prevComment
-            )
-          );
-        });
-        comment.unsubscribeReplies = unsubscribeReplies;
-
-        const initialRepliesSnapshot = await getDocs(repliesQuery);
-        const replies = initialRepliesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const repliesSnapshot = await getDocs(repliesQuery);
+        const replies = await Promise.all(repliesSnapshot.docs.map(async (doc) => {
+          const replyData = { id: doc.id, ...doc.data() };
+          const userData = await fetchUserData(replyData.userId);
+          return {
+            ...replyData,
+            userAvatar: userData?.photoURL || '/default-avatar.png',
+            userName: userData?.username || 'Unknown User'
+          };
+        }));
         return { ...comment, replies };
       }));
-
+  
       setComments(commentsWithReplies);
     }, (err) => setError(`Error fetching comments: ${err.message}`));
-
+  
     return () => {
       unsubscribe();
-      comments.forEach(comment => comment.unsubscribeReplies && comment.unsubscribeReplies());
     };
   }, [post?.id]);
 
@@ -95,9 +113,10 @@ const Modal = React.memo(({ post, onClose, user, currentUser, onLike, onComment,
       const newReply = {
         userId: currentUser.uid,
         userName: currentUser.displayName,
-        userAvatar: user.photoURL,
+        userAvatar: currentUser.photoURL,
         content: replyText.trim(),
         createdAt: serverTimestamp(),
+        likes: [],
       };
       await addDoc(replyRef, newReply);
 
@@ -107,9 +126,44 @@ const Modal = React.memo(({ post, onClose, user, currentUser, onLike, onComment,
     }
   }, [currentUser]);
 
-  const handleLike = useCallback(async () => {
-    await onLike(post.id);
-  }, [onLike, post.id]);
+  const handleLike = useCallback(async (commentId, isReply = false, parentCommentId = null) => {
+    if (!currentUser?.uid) return;
+
+    try {
+      const commentRef = isReply
+        ? doc(db, 'comments', parentCommentId, 'replies', commentId)
+        : doc(db, 'comments', commentId);
+
+      const commentDoc = await getDoc(commentRef);
+      const currentLikes = commentDoc.data().likes || [];
+
+      if (currentLikes.includes(currentUser.uid)) {
+        await updateDoc(commentRef, { likes: arrayRemove(currentUser.uid) });
+      } else {
+        await updateDoc(commentRef, { likes: arrayUnion(currentUser.uid) });
+      }
+
+      // Update local state
+      setComments(prevComments => 
+        prevComments.map(comment => 
+          isReply && comment.id === parentCommentId
+            ? {
+                ...comment,
+                replies: comment.replies.map(reply =>
+                  reply.id === commentId
+                    ? { ...reply, likes: currentLikes.includes(currentUser.uid) ? currentLikes.filter(id => id !== currentUser.uid) : [...currentLikes, currentUser.uid] }
+                    : reply
+                )
+              }
+            : comment.id === commentId
+              ? { ...comment, likes: currentLikes.includes(currentUser.uid) ? currentLikes.filter(id => id !== currentUser.uid) : [...currentLikes, currentUser.uid] }
+              : comment
+        )
+      );
+    } catch (error) {
+      setError(`Error updating like: ${error.message}`);
+    }
+  }, [currentUser]);
 
   const handleDoubleClick = useCallback(async () => {
     if (!post.likes.includes(currentUser?.uid)) {
@@ -147,35 +201,74 @@ const Modal = React.memo(({ post, onClose, user, currentUser, onLike, onComment,
     }
   }, [post?.imageUrls, post?.imageUrl, currentFrame]);
 
+  const toggleExpandReplies = useCallback((commentId) => {
+    setExpandedComments(prev => ({ ...prev, [commentId]: !prev[commentId] }));
+  }, []);
+
+  const renderReplies = useCallback((comment) => {
+    const replies = comment.replies || [];
+    const showMoreButton = replies.length > 3;
+    const displayedReplies = expandedComments[comment.id] ? replies : replies.slice(0, 3);
+
+    return (
+      <>
+        <div className="replies">
+          {displayedReplies.map(reply => (
+            <div key={reply.id} className="reply">
+              <img src={reply.userAvatar || '/default-avatar.png'} alt={reply.userName} className="comment-avatar" />
+              <div className="comment-content">
+                <span className="comment-username">{reply.userName}</span>
+                <span className="comment-text">{reply.content}</span>
+                <div className="comment-actions">
+                  <span className="comment-action" onClick={() => handleLike(reply.id, true, comment.id)}>
+                    {reply.likes?.includes(currentUser?.uid) ? '❤️' : '🤍'} {reply.likes?.length || 0}
+                  </span>
+                  <span className="comment-action" onClick={() => setReplyingTo(reply.id)}>Reply</span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        {showMoreButton && (
+          <div className="show-more-replies" onClick={() => toggleExpandReplies(comment.id)}>
+            {expandedComments[comment.id] ? 'Show less' : `View ${replies.length - 3} more replies`}
+          </div>
+        )}
+      </>
+    );
+  }, [expandedComments, currentUser, handleLike, toggleExpandReplies]);
+
   const memoizedComments = useMemo(() => {
     return comments.map(comment => (
-      <li key={comment.id} className="comment">
-        <Link to={`/profile/${comment.userId}`} onClick={() => onClose()}>
-          <strong>{sanitizeInput(comment.userName)}</strong>
-        </Link>
-        <span>{sanitizeInput(comment.content)}</span>
-        <button className="reply-button" onClick={() => setReplyingTo(comment.id)}>Reply</button>
-        {comment.replies && comment.replies.map(reply => (
-          <div key={reply.id} className="reply">
-            <Link to={`/profile/${reply.userId}`} onClick={() => onClose()}>
-              <strong>{sanitizeInput(reply.userName)}</strong>
-            </Link>
-            <span>{sanitizeInput(reply.content)}</span>
+      <div key={comment.id} className="comment">
+        <img src={comment.userAvatar || '/default-avatar.png'} alt={comment.userName} className="comment-avatar" />
+        <div className="comment-content">
+          <Link to={`/profile/${comment.userId}`} onClick={() => handleUserClick(comment.userId)}>
+            <span className="comment-username">{sanitizeInput(comment.userName)}</span>
+          </Link>
+          <span className="comment-text">{sanitizeInput(comment.content)}</span>
+          <div className="comment-actions">
+            <span className="comment-action" onClick={() => handleLike(comment.id)}>
+              {comment.likes?.includes(currentUser?.uid) ? '❤️' : '🤍'} {comment.likes?.length || 0}
+            </span>
+            <span className="comment-action" onClick={() => setReplyingTo(comment.id)}>Reply</span>
           </div>
-        ))}
-        {replyingTo === comment.id && (
-          <form onSubmit={(e) => {
-            e.preventDefault();
-            handleReply(comment.id, e.target.reply.value);
-            e.target.reply.value = '';
-          }}>
-            <input type="text" name="reply" placeholder="Write a reply..." />
-            <button type="submit">Post Reply</button>
-          </form>
-        )}
-      </li>
+          {renderReplies(comment)}
+          {replyingTo === comment.id && (
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              handleReply(comment.id, e.target.reply.value);
+              e.target.reply.value = '';
+            }}>
+              <input type="text" name="reply" placeholder="Write a reply..." className="comment-input" />
+              <button type="submit" className="post-button">Post</button>
+            </form>
+          )}
+        </div>
+      </div>
     ));
-  }, [comments, replyingTo, handleReply, sanitizeInput]);
+  }, [comments, replyingTo, handleReply, sanitizeInput, handleLike, currentUser, renderReplies, handleUserClick]);
+
 
   if (error) {
     return (

@@ -6,11 +6,16 @@ import { createNotification } from '../utils/notificationHelpers';
 import './FeedPost.css';
 
 const FeedPost = React.memo(({ post, user, openProfile }) => {
+    const REPLIES_TO_SHOW = 3; // Number of replies to show before "Show more"
+
     const [isLiked, setIsLiked] = useState(false);
     const [likesCount, setLikesCount] = useState(0);
     const [comments, setComments] = useState([]);
     const [newComment, setNewComment] = useState('');
     const [showComments, setShowComments] = useState(false);
+    const [openReplyIds, setOpenReplyIds] = useState({});
+    const [expandedComments, setExpandedComments] = useState({});
+    const [postUserData, setPostUserData] = useState(null);
     const [error, setError] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
     const [currentFrame, setCurrentFrame] = useState(0);
@@ -29,6 +34,20 @@ const FeedPost = React.memo(({ post, user, openProfile }) => {
             }
         };
     }, [post.imageUrls, post.loopSpeed]);
+
+    const fetchUserData = async (userId) => {
+        try {
+            const userDocRef = doc(db, 'users', userId);
+            const userDocSnap = await getDoc(userDocRef);
+            if (userDocSnap.exists()) {
+                return userDocSnap.data();
+            }
+            return null;
+        } catch (error) {
+            console.error('Error fetching user data:', error);
+            return null;
+        }
+    };
 
     useEffect(() => {
         setIsLiked(post.likes && post.likes.includes(user.uid));
@@ -70,10 +89,10 @@ const FeedPost = React.memo(({ post, user, openProfile }) => {
 
         try {
             setIsLoading(true);
+            const userData = await fetchUserData(user.uid);
             const commentRef = await addDoc(collection(db, 'comments'), {
                 postId: post.id,
                 userId: user.uid,
-                userName: user.displayName || user.email,
                 content: newComment.trim(),
                 createdAt: serverTimestamp(),
                 likes: []
@@ -96,6 +115,30 @@ const FeedPost = React.memo(({ post, user, openProfile }) => {
         }
     }, [newComment, post, user]);
 
+    const toggleReplyField = (commentId, replyId = null) => {
+        setOpenReplyIds(prev => {
+            const key = replyId ? `${commentId}-${replyId}` : commentId;
+            return { ...prev, [key]: !prev[key] };
+        });
+    };
+
+    const toggleExpandReplies = (commentId) => {
+        setExpandedComments(prev => ({ ...prev, [commentId]: !prev[commentId] }));
+    };
+
+    useEffect(() => {
+        const fetchPostUserData = async () => {
+            try {
+                const userData = await fetchUserData(post.userId);
+                setPostUserData(userData);
+            } catch (error) {
+                console.error('Error fetching post user data:', error);
+            }
+        };
+
+        fetchPostUserData();
+    }, [post.userId]);
+
     useEffect(() => {
         if (!showComments) return;
 
@@ -108,11 +151,10 @@ const FeedPost = React.memo(({ post, user, openProfile }) => {
         const unsubscribe = onSnapshot(q, async (snapshot) => {
             const fetchedComments = await Promise.all(snapshot.docs.map(async (docSnapshot) => {
                 const commentData = { id: docSnapshot.id, ...docSnapshot.data() };
-                // Fetch user data to get the photoURL
-                const userDoc = await getDoc(doc(db, 'users', commentData.userId));
-                commentData.userPhotoURL = userDoc.data()?.photoURL;
+                const userData = await fetchUserData(commentData.userId);
+                commentData.userPhotoURL = userData?.photoURL;
+                commentData.userName = userData?.username;
 
-                // Only fetch replies if the comment has an id
                 if (commentData.id) {
                     const repliesQuery = query(
                         collection(db, 'comments', commentData.id, 'replies'),
@@ -121,8 +163,9 @@ const FeedPost = React.memo(({ post, user, openProfile }) => {
                     const repliesSnapshot = await getDocs(repliesQuery);
                     commentData.replies = await Promise.all(repliesSnapshot.docs.map(async (replyDoc) => {
                         const replyData = { id: replyDoc.id, ...replyDoc.data() };
-                        const replyUserDoc = await getDoc(doc(db, 'users', replyData.userId));
-                        replyData.userPhotoURL = replyUserDoc.data()?.photoURL;
+                        const replyUserData = await fetchUserData(replyData.userId);
+                        replyData.userPhotoURL = replyUserData?.photoURL;
+                        replyData.userName = replyUserData?.username;
                         return replyData;
                     }));
                 } else {
@@ -136,19 +179,22 @@ const FeedPost = React.memo(({ post, user, openProfile }) => {
         return () => unsubscribe();
     }, [showComments, post.id]);
 
-    const handleReply = useCallback(async (commentId, replyContent) => {
+    const handleReply = useCallback(async (commentId, replyContent, replyToReplyId = null) => {
         if (!user || !replyContent.trim()) return;
 
         try {
             setIsLoading(true);
-            const replyRef = await addDoc(collection(db, 'comments', commentId, 'replies'), {
+            const userData = await fetchUserData(user.uid);
+            const replyData = {
                 postId: post.id,
                 userId: user.uid,
-                userName: user.displayName || user.email,
                 content: replyContent.trim(),
                 createdAt: serverTimestamp(),
-                likes: []
-            });
+                likes: [],
+                replyToReplyId
+            };
+
+            const replyRef = await addDoc(collection(db, 'comments', commentId, 'replies'), replyData);
 
             await updateDoc(doc(db, 'posts', post.id), {
                 commentCount: increment(1)
@@ -161,12 +207,11 @@ const FeedPost = React.memo(({ post, user, openProfile }) => {
                 await createNotification(commentOwnerId, user.uid, 'reply', post.id, user.photoURL, user.displayName, post.imageUrls?.[0] || post.imageUrl);
             }
 
-            // Fetch the new reply and add it to the state
-            const newReplyDoc = await getDoc(replyRef);
+            // Update the state
             setComments(prevComments =>
                 prevComments.map(comment =>
                     comment.id === commentId
-                        ? { ...comment, replies: [...(comment.replies || []), { id: newReplyDoc.id, ...newReplyDoc.data() }] }
+                        ? { ...comment, replies: [...(comment.replies || []), { id: replyRef.id, ...replyData }] }
                         : comment
                 )
             );
@@ -225,6 +270,55 @@ const FeedPost = React.memo(({ post, user, openProfile }) => {
         }
     }, [post, user]);
 
+    const renderReplies = (comment) => {
+        const replies = comment.replies || [];
+        const showMoreButton = replies.length > REPLIES_TO_SHOW;
+        const displayedReplies = expandedComments[comment.id] ? replies : replies.slice(0, REPLIES_TO_SHOW);
+
+        return (
+            <>
+                <ul className="replies-list">
+                    {displayedReplies.map(reply => (
+                        <li key={reply.id} className="reply">
+                            <img src={reply.userPhotoURL || '/default-avatar.png'} alt={reply.userName} className="reply-user-avatar" />
+                            <div className="reply-content">
+                                <span className="reply-username">{reply.userName}</span>
+                                <span className="reply-text">{reply.content}</span>
+                                <div className="reply-actions">
+                                    <span onClick={() => handleCommentLike(reply.id, true, comment.id)} className="reply-like-btn">
+                                        {reply.likes && reply.likes.includes(user.uid) ? '❤️' : '🤍'} {reply.likes ? reply.likes.length : 0}
+                                    </span>
+                                    <span className="reply-action">
+                                        <button onClick={() => toggleReplyField(comment.id, reply.id)} className="reply-btn">
+                                            Reply
+                                        </button>
+                                    </span>
+                                </div>
+                                {openReplyIds[`${comment.id}-${reply.id}`] && (
+                                    <form onSubmit={(e) => {
+                                        e.preventDefault();
+                                        handleReply(comment.id, e.target.reply.value, reply.id);
+                                        e.target.reply.value = '';
+                                        toggleReplyField(comment.id, reply.id);
+                                    }} className="reply-form">
+                                        <input type="text" name="reply" placeholder="Write a reply..." />
+                                        <button type="submit">Reply</button>
+                                    </form>
+                                )}
+                            </div>
+                        </li>
+                    ))}
+                </ul >
+                {showMoreButton && (
+                    <button onClick={() => toggleExpandReplies(comment.id)} className="show-more-btn">
+                        {expandedComments[comment.id] ? 'Show less' : `Show ${replies.length - REPLIES_TO_SHOW} more replies`}
+                    </button>
+                )
+                }
+            </>
+        );
+    };
+
     const memoizedComments = useMemo(() => (
         <ul className="comments-list">
             {comments.map(comment => (
@@ -235,46 +329,43 @@ const FeedPost = React.memo(({ post, user, openProfile }) => {
                             <span className="comment-username">{comment.userName}</span>
                         </Link>
                         <span className="comment-text">{comment.content}</span>
-                        <button onClick={() => handleCommentLike(comment.id)} className="comment-like-btn">
-                            {comment.likes && comment.likes.includes(user.uid) ? '❤️' : '🤍'} {comment.likes ? comment.likes.length : 0}
-                        </button>
-                        {comment.replies && comment.replies.length > 0 && (
-                            <ul className="replies-list">
-                                {comment.replies.map(reply => (
-                                    <li key={reply.id} className="reply">
-                                        <img src={reply.userPhotoURL || '/default-avatar.png'} alt={reply.userName} className="reply-user-avatar" />
-                                        <div className="reply-content">
-                                            <span className="reply-username">{reply.userName}</span>
-                                            <span className="reply-text">{reply.content}</span>
-                                            <button onClick={() => handleCommentLike(reply.id, true, comment.id)} className="reply-like-btn">
-                                                {reply.likes && reply.likes.includes(user.uid) ? '❤️' : '🤍'} {reply.likes ? reply.likes.length : 0}
-                                            </button>
-                                        </div>
-                                    </li>
-                                ))}
-                            </ul>
+                        <div className="comment-actions">
+                            <span onClick={() => handleCommentLike(comment.id)} className="comment-like-btn">
+                                {comment.likes && comment.likes.includes(user.uid) ? '❤️' : '🤍'} {comment.likes ? comment.likes.length : 0}
+                            </span>
+                            <span className="comment-action">
+                                <button onClick={() => toggleReplyField(comment.id)} className="reply-btn">
+                                    Reply
+                                </button>
+                            </span>
+                        </div>
+                        {renderReplies(comment)}
+                        {openReplyIds[comment.id] && (
+                            <form onSubmit={(e) => {
+                                e.preventDefault();
+                                handleReply(comment.id, e.target.reply.value);
+                                e.target.reply.value = '';
+                                toggleReplyField(comment.id);
+                            }} className="reply-form">
+                                <input type="text" name="reply" placeholder="Write a reply..." />
+                                <button type="submit">Reply</button>
+                            </form>
                         )}
-                        <form onSubmit={(e) => {
-                            e.preventDefault();
-                            handleReply(comment.id, e.target.reply.value);
-                            e.target.reply.value = '';
-                        }} className="reply-form">
-                            <input type="text" name="reply" placeholder="Write a reply..." />
-                            <button type="submit">Reply</button>
-                        </form>
                     </div>
                 </li>
             ))}
         </ul>
-    ), [comments, handleCommentLike, handleReply, user, openProfile]);
+    ), [comments, handleCommentLike, handleReply, user, openProfile, openReplyIds, expandedComments, toggleReplyField, toggleExpandReplies]);
 
     return (
         <div className="feed-post">
             <div className="post-header">
                 <Link to={`/profile/${post.userId}`} onClick={() => openProfile(post.userId)}>
-                    <img src={post.userAvatar || 'default-avatar.png'} alt="User avatar" className="user-avatar" />
+                    <img src={postUserData?.photoURL || '/default-avatar.png'} alt="User avatar" className="user-avatar" />
                 </Link>
-                <span className="user-name">{post.userName}</span>
+                <Link className='post-username' to={`/profile/${post.userId}`} onClick={() => openProfile(post.userId)}>
+                    <span className="user-name">{postUserData?.username || 'Unknown User'}</span>
+                </Link>
             </div>
             {error && <div className="error-message">{error}</div>}
             {isLoading && <div className="loading-indicator">Loading...</div>}

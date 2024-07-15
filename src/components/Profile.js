@@ -5,10 +5,13 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { collection, query, where, getDocs, orderBy, limit, startAfter, doc, addDoc, updateDoc, deleteDoc, arrayUnion, arrayRemove, getDoc, increment, serverTimestamp } from 'firebase/firestore';
 import { useNavigate, useParams } from 'react-router-dom';
 import { createNotification } from '../utils/notificationHelpers';
+import EditProfileModal from './EditProfileModal';
 import Modal from './Modal';
 import './Profile.css';
 
 function Profile({ currentUser, modalPost, setModalPost }) {
+  const POSTS_PER_PAGE = 9;
+
   const { userId } = useParams();
   const [user, setUser] = useState(null);
   const [posts, setPosts] = useState([]);
@@ -21,9 +24,18 @@ function Profile({ currentUser, modalPost, setModalPost }) {
   const [followers, setFollowers] = useState(0);
   const [following, setFollowing] = useState(0);
   const [privacySettings, setPrivacySettings] = useState({});
+  const [editMode, setEditMode] = useState(false);
+  const [editedProfile, setEditedProfile] = useState({});
+  const [showEditModal, setShowEditModal] = useState(false);
   const navigate = useNavigate();
   const observer = useRef();
-  const POSTS_PER_PAGE = 9;
+
+  useEffect(() => {
+    // Check if user is authenticated
+    if (!auth.currentUser) {
+      navigate('/login');
+    }
+  }, [navigate]);
 
   const lastPostElementRef = useCallback(node => {
     if (loading) return;
@@ -104,9 +116,14 @@ function Profile({ currentUser, modalPost, setModalPost }) {
         limit(POSTS_PER_PAGE)
       );
       const querySnapshot = await getDocs(q);
-      const fetchedPosts = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
+      const fetchedPosts = await Promise.all(querySnapshot.docs.map(async (doc) => {
+        const postData = { id: doc.id, ...doc.data() };
+        const userData = await fetchUserData(postData.userId);
+        return {
+          ...postData,
+          userAvatar: userData?.photoURL || '/default-avatar.png',
+          userName: userData?.username || 'Unknown User'
+        };
       }));
       setPosts(fetchedPosts);
       setLastVisible(querySnapshot.docs[querySnapshot.docs.length - 1]);
@@ -128,9 +145,14 @@ function Profile({ currentUser, modalPost, setModalPost }) {
         limit(POSTS_PER_PAGE)
       );
       const querySnapshot = await getDocs(q);
-      const newPosts = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
+      const newPosts = await Promise.all(querySnapshot.docs.map(async (doc) => {
+        const postData = { id: doc.id, ...doc.data() };
+        const userData = await fetchUserData(postData.userId);
+        return {
+          ...postData,
+          userAvatar: userData?.photoURL || '/default-avatar.png',
+          userName: userData?.username || 'Unknown User'
+        };
       }));
       setPosts(prevPosts => [...prevPosts, ...newPosts]);
       setLastVisible(querySnapshot.docs[querySnapshot.docs.length - 1]);
@@ -454,6 +476,41 @@ function Profile({ currentUser, modalPost, setModalPost }) {
     </div>
   ), [posts, lastPostElementRef, renderPostContent, setSelectedPost]);
 
+  const handleEditProfile = () => {
+    setShowEditModal(true);
+  };
+
+  const handleSaveProfile = useCallback(async (editedProfile) => {
+    if (!currentUser || currentUser.uid !== userId) {
+      console.error('Unauthorized access attempt');
+      setError('Unauthorized action');
+      return;
+    }
+
+    try {
+      const userRef = doc(db, 'users', userId);
+
+      const allowedUpdates = {
+        bioTitle: editedProfile.bioTitle,
+        bio: editedProfile.bio,
+        website: editedProfile.website,
+        location: editedProfile.location,
+      };
+
+      await updateDoc(userRef, allowedUpdates);
+      setUser(prevUser => ({ ...prevUser, ...allowedUpdates }));
+      setShowEditModal(false);
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      setError('Failed to update profile');
+    }
+  }, [currentUser, userId]);
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setEditedProfile(prev => ({ ...prev, [name]: value }));
+  };
+
   const canViewPosts = useCallback(() => {
     if (currentUser && currentUser.uid === user?.id) return true;
     if (privacySettings.postsVisibility === 'public') return true;
@@ -493,28 +550,26 @@ function Profile({ currentUser, modalPost, setModalPost }) {
           alt={`${user.username}'s profile`}
           className="profile-picture"
         />
-        {currentUser && currentUser.uid === userId && (
-          <input
-            type="file"
-            accept="image/*"
-            onChange={handleProfilePictureUpload}
-            style={{ display: 'none' }}
-            id="profile-picture-upload"
-          />
-        )}
-        {currentUser && currentUser.uid === userId && (
-          <label htmlFor="profile-picture-upload" className="upload-button">
-            Change Profile Picture
-          </label>
-        )}
         <div className="profile-info">
-          <h2>{user.username}</h2>
-          <p>{followers} followers · {following} following</p>
-          <p className="bio">{user.bio}</p>
+          <h2 className="profile-username">{user.username}</h2>
+          <div className="profile-stats">
+            <span className="profile-stat"><span className="profile-stat-count">{posts.length}</span> posts</span>
+            <span className="profile-stat"><span className="profile-stat-count">{followers}</span> followers</span>
+            <span className="profile-stat"><span className="profile-stat-count">{following}</span> following</span>
+          </div>
+          {user.bioTitle && <p className="profile-bio-title">{user.bioTitle}</p>}
+          <p className="profile-bio">{user.bio}</p>
+          {user.website && (
+            <a href={user.website} className="profile-website" target="_blank" rel="noopener noreferrer">
+              {new URL(user.website).hostname}
+            </a>
+          )}
+          {user.location && <p className="profile-location">{user.location}</p>}
           <div className="profile-actions">
             {currentUser && currentUser.uid === user.id ? (
               <>
                 <button onClick={handleCreateNewLoop} className="create-loop-btn">Create New Loop</button>
+                <button onClick={handleEditProfile} className="edit-profile-btn">Edit Profile</button>
               </>
             ) : (
               <>
@@ -528,6 +583,25 @@ function Profile({ currentUser, modalPost, setModalPost }) {
           </div>
         </div>
       </div>
+
+      {showEditModal && (
+        <EditProfileModal
+          user={user}
+          onClose={() => setShowEditModal(false)}
+          onSave={handleSaveProfile}
+        />
+      )}
+
+      {selectedPost && (
+        <Modal
+          onClose={() => setSelectedPost(null)}
+          post={selectedPost}
+          user={user}
+          currentUser={currentUser}
+          onLike={handleLike}
+          onComment={handleComment}
+        />
+      )}
 
       {canViewPosts() ? (
         <>

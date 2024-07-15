@@ -158,6 +158,11 @@ button:focus {
   padding-top: 80px;
 }
 
+.main-content {
+  background-color: var(--secondary-bg);
+  color: var(--on-surface-secondary-color);
+}
+
 /* @media (max-width: 768px) {
   .content-below-header {
     padding-top: 50px;
@@ -379,8 +384,7 @@ button:disabled {
 }
 
 .comment .reply {
-  margin-left: 20px;
-  padding-left: 10px;
+  padding-left: 3px;
   border-left: 2px solid var(--border-color);
 }
 

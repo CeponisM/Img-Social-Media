@@ -22,7 +22,6 @@
 body {
     margin-top: var(--header-height);
     background-color: var(--primary-bg);
-    border-bottom: 1px solid var(--border-color);
     color: var(--primary-text);
     transition: background-color 0.3s, color 0.3s;
 }

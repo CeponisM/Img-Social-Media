@@ -11,6 +11,7 @@ function ImageEditor({ user }) {
     const [images, setImages] = useState([]);
     const [loopSpeed, setLoopSpeed] = useState(500);
     const [filter, setFilter] = useState('none');
+    const [filterStrength, setFilterStrength] = useState(0.5);
     const [isPlaying, setIsPlaying] = useState(true);
     const [currentImageIndex, setCurrentImageIndex] = useState(0);
     const [isReversed, setIsReversed] = useState(false);
@@ -19,6 +20,7 @@ function ImageEditor({ user }) {
     const [saturation, setSaturation] = useState(100);
     const [blur, setBlur] = useState(0);
     const [hueRotate, setHueRotate] = useState(0);
+    const [hueRotateToggle, setHueRotateToggle] = useState(false);
     const [caption, setCaption] = useState('');
     const [isLoading, setIsLoading] = useState(true);
     const [isMounted, setIsMounted] = useState(false);
@@ -42,16 +44,19 @@ function ImageEditor({ user }) {
         canvas.width = img.width;
         canvas.height = img.height;
 
-        ctx.filter = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%) blur(${blur}px) hue-rotate(${hueRotate}deg)`;
+        ctx.filter = `brightness(${brightness}%) contrast(${contrast}%) saturate(${saturation}%) blur(${blur}px) ${hueRotateToggle ? `hue-rotate(${hueRotate}deg)` : ''}`;
+
+        // Draw the original image
         ctx.drawImage(img, 0, 0);
 
         if (filter !== 'none') {
             ctx.globalCompositeOperation = 'overlay';
             ctx.fillStyle = filter;
+            ctx.globalAlpha = filterStrength;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
             ctx.globalCompositeOperation = 'source-over';
         }
-    }, [currentImageIndex, brightness, contrast, saturation, blur, hueRotate, filter]);
+    }, [currentImageIndex, brightness, contrast, saturation, blur, hueRotate, hueRotateToggle, filter, filterStrength]);
 
     useEffect(() => {
         setIsMounted(true);
@@ -170,9 +175,9 @@ function ImageEditor({ user }) {
             const docData = {
                 userId: user.uid,
                 imageUrls: imageUrls,
-                userAvatar: user.photoURL,
                 caption: caption,
                 filter: filter,
+                filterStrength: filterStrength,
                 loopSpeed: loopSpeed,
                 brightness: brightness,
                 contrast: contrast,
@@ -187,7 +192,7 @@ function ImageEditor({ user }) {
             console.log('Document written with ID: ', docRef.id);
 
             alert('Loop saved successfully!');
-            navigate('/profile');
+            navigate(`/profile/${user.uid}`);
         } catch (error) {
             console.error('Error saving loop:', error);
             if (error.code) {
@@ -259,6 +264,17 @@ function ImageEditor({ user }) {
                         </div>
                         <div className="adjustment-controls">
                             <div className="control-group">
+                                <label>Filter Strength</label>
+                                <input
+                                    type="range"
+                                    min="0"
+                                    max="1"
+                                    step="0.1"
+                                    value={filterStrength}
+                                    onChange={(e) => setFilterStrength(Number(e.target.value))}
+                                />
+                            </div>
+                            <div className="control-group">
                                 <label>Brightness</label>
                                 <input
                                     type="range"
@@ -309,14 +325,25 @@ function ImageEditor({ user }) {
                                     onChange={(e) => setHueRotate(Number(e.target.value))}
                                 />
                             </div>
+                            <div className="control-group">
+                                <label>
+                                    <input
+                                        type="checkbox"
+                                        checked={hueRotateToggle}
+                                        onChange={(e) => setHueRotateToggle(e.target.checked)}
+                                    />
+                                    Enable Hue Rotate
+                                </label>
+                            </div>
                         </div>
                         <button className="post-button" onClick={saveLoop}>
                             Post
                         </button>
                     </div>
                 </>
-            )}
-        </div>
+            )
+            }
+        </div >
     );
 }
 

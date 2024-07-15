@@ -117,19 +117,31 @@ async function processFrame(src, prevImg, index, totalFrames, processingChoices)
     }
     if (processingChoices.colorGrade) {
       console.log('Color grading image...');
-      result = await colorGradeImage(result);
+      let colorGraded = await colorGradeImage(
+        result, 
+        processingChoices.hueRotate || 0,
+        processingChoices.filterStrength || 0.5
+      );
+      result.delete();
+      result = colorGraded;
     }
     if (processingChoices.sharpen) {
       console.log('Sharpening image...');
-      result = await sharpenImage(result);
+      let sharpened = await sharpenImage(result);
+      result.delete();
+      result = sharpened;
     }
     if (processingChoices.denoise) {
       console.log('Denoising image...');
-      result = await denoiseImage(result);
+      let denoised = await denoiseImage(result);
+      result.delete();
+      result = denoised;
     }
     if (processingChoices.vignette) {
       console.log('Applying vignette...');
-      result = await applyVignette(result);
+      let vignetted = await applyVignette(result);
+      result.delete();
+      result = vignetted;
     }
 
     // Ensure the result is in the correct format (8-bit per channel, 4 channels)
@@ -143,7 +155,10 @@ async function processFrame(src, prevImg, index, totalFrames, processingChoices)
     if (result && !result.isDeleted()) {
       result.delete();
     }
-    throw error;
+    // Return the original image if processing fails
+    let finalResult = new cv.Mat();
+    cv.cvtColor(src, finalResult, cv.COLOR_BGR2RGBA);
+    return finalResult;
   }
 }
 
@@ -399,7 +414,7 @@ async function enhanceImage(src) {
   }
 }
 
-async function colorGradeImage(src) {
+async function colorGradeImage(src, hueRotate = 30, filterStrength = 0.5) {
   try {
     let result = src.clone();
     
@@ -413,11 +428,9 @@ async function colorGradeImage(src) {
     
     // Adjust hue (rotate colors)
     let h_channel = channels.get(0);
-    cv.add(h_channel, new cv.Scalar(30), h_channel); // Rotate hue by 30 degrees
-    
-    // Increase saturation
-    let s_channel = channels.get(1);
-    cv.multiply(s_channel, new cv.Scalar(1.2), s_channel);
+    let hueShift = new cv.Mat(h_channel.rows, h_channel.cols, h_channel.type(), new cv.Scalar(hueRotate));
+    cv.add(h_channel, hueShift, h_channel, new cv.Mat(), cv.CV_8U);
+    hueShift.delete();
     
     // Merge channels
     cv.merge(channels, hsv);
@@ -425,9 +438,18 @@ async function colorGradeImage(src) {
     // Convert back to BGR
     cv.cvtColor(hsv, result, cv.COLOR_HSV2BGR);
     
+    // Apply filter
+    let filteredImage = new cv.Mat();
+    cv.cvtColor(result, filteredImage, cv.COLOR_BGR2GRAY);
+    cv.cvtColor(filteredImage, filteredImage, cv.COLOR_GRAY2BGR);
+    
+    // Blend the filtered image with the original based on filter strength
+    cv.addWeighted(result, 1 - filterStrength, filteredImage, filterStrength, 0, result);
+    
     // Clean up
     hsv.delete();
     channels.delete();
+    filteredImage.delete();
     
     return result;
   } catch (error) {
@@ -453,7 +475,7 @@ async function sharpenImage(src) {
 async function denoiseImage(src) {
   try {
     let denoised = new cv.Mat();
-    cv.fastNlMeansDenoisingColored(src, denoised, 10, 10, 7, 21);
+    cv.medianBlur(src, denoised, 5);
     return denoised;
   } catch (error) {
     console.error('Error in denoiseImage:', error);
@@ -466,20 +488,31 @@ async function applyVignette(src) {
     let result = src.clone();
     let rows = result.rows;
     let cols = result.cols;
-    let kernel_x = cv.getGaussianKernel(cols, cols * 0.3);
-    let kernel_y = cv.getGaussianKernel(rows, rows * 0.3);
-    let kernel = kernel_y.matMul(kernel_x.t());
-    let mask = new cv.Mat();
-    cv.normalize(kernel, mask, 0, 1, cv.NORM_MINMAX);
+    let center = new cv.Point(cols / 2, rows / 2);
+    let mask = new cv.Mat.zeros(rows, cols, cv.CV_8UC1);
+    
+    // Create radial gradient
+    for (let y = 0; y < rows; y++) {
+      for (let x = 0; x < cols; x++) {
+        let distance = Math.sqrt(Math.pow(x - center.x, 2) + Math.pow(y - center.y, 2));
+        let maxDistance = Math.sqrt(Math.pow(center.x, 2) + Math.pow(center.y, 2));
+        let value = Math.round((1 - Math.min(distance / maxDistance, 1)) * 255);
+        mask.ucharPtr(y, x)[0] = value;
+      }
+    }
+    
+    // Apply vignette
     let channels = new cv.MatVector();
     cv.split(result, channels);
     for (let i = 0; i < 3; i++) {
-      cv.multiply(channels.get(i), mask, channels.get(i));
+      cv.multiply(channels.get(i), mask, channels.get(i), 1/255);
     }
     cv.merge(channels, result);
-    kernel.delete();
+    
+    // Clean up
     mask.delete();
     channels.delete();
+    
     return result;
   } catch (error) {
     console.error('Error in applyVignette:', error);

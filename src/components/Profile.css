@@ -15,7 +15,6 @@
 .profile {
     display: grid;
     grid-template-columns: 1fr min(935px, 100%) 1fr;
-    gap: 20px;
     background-color: var(--profile-bg);
     color: var(--profile-text);
 }
@@ -42,7 +41,7 @@
 .posts-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 20px;
+    gap: 3px;
 }
 
 .post {
@@ -54,7 +53,7 @@
 }
 
 .post:hover {
-    transform: scale(1.05);
+    transform: scale(1.01);
 }
 
 .skeleton {
@@ -212,4 +211,104 @@
     padding: 20px;
     font-size: 16px;
     color: #8e8e8e;
+}
+
+.profile-header {
+    padding: 21px 0;
+    margin-bottom: 20px;
+    border-bottom: 1px solid var(--profile-border);
+}
+
+.profile-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.profile-username {
+    font-size: 28px;
+    font-weight: 300;
+    margin-top: 0px;
+    margin-bottom: 12px;
+}
+
+.profile-stats {
+    display: flex;
+    margin-bottom: 12px;
+}
+
+.profile-stat {
+    margin-left: 12px;
+    margin-right: 40px;
+    font-size: 16px;
+}
+
+.profile-stat-count {
+    font-weight: 600;
+}
+
+.profile-bio-title {
+    font-weight: 600;
+    margin-left: 6px;
+    margin-bottom: 1px;
+    margin-top: 1px;
+}
+
+.profile-bio {
+    margin-left: 12px;
+    margin-bottom: 12px;
+    margin-top: 1px;
+}
+
+.profile-website {
+    color: #00376b;
+    font-weight: 600;
+    text-decoration: none;
+    margin-left: 6px;
+    margin-top: 1px;
+}
+
+.profile-location {
+    color: var(--profile-secondary-text);
+    margin-left: 6px;
+    margin-top: 1px;
+    margin-bottom: 12px;
+}
+
+.edit-profile-btn {
+    padding: 5px 9px;
+    background-color: transparent;
+    border: 1px solid var(--profile-border);
+    border-radius: 4px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.edit-profile-modal {
+    background-color: var(--profile-bg);
+    padding: 20px;
+    border-radius: 12px;
+    width: 400px;
+    max-width: 90%;
+}
+
+.edit-profile-form {
+    display: flex;
+    flex-direction: column;
+}
+
+.edit-profile-form input,
+.edit-profile-form textarea {
+    margin-bottom: 15px;
+    padding: 8px;
+    border: 1px solid var(--profile-border);
+    border-radius: 4px;
+}
+
+.edit-profile-form button {
+    padding: 8px 16px;
+    background-color: var(--accent-color);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
 }

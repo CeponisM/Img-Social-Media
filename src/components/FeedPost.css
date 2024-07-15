@@ -52,6 +52,10 @@
     font-size: 14px;
 }
 
+.post-username {
+    text-decoration: none;
+}
+
 .post-content img {
     width: 100%;
     height: auto;
@@ -107,12 +111,16 @@
 .reply {
     display: flex;
     align-items: flex-start;
-    margin-bottom: 12px;
+    margin-bottom: 3px;
+}
+
+.comment:hover {
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.21);
 }
 
 .comment-content,
 .reply-content {
-    flex-grow: 1;
+    flex: 1;
 }
 
 .comment-username,
@@ -127,6 +135,19 @@
 .reply-text {
     color: var(--text-color);
     font-size: 13px;
+    word-break: break-word;
+}
+
+.comment-actions,
+.reply-actions {
+    font-size: 12px;
+    color: var(--modal-secondary-text);
+}
+
+.comment-action,
+.reply-action {
+    margin-right: 16px;
+    cursor: pointer;
 }
 
 .comment-like-btn,
@@ -135,7 +156,6 @@
     border: none;
     cursor: pointer;
     font-size: 12px;
-    margin-left: 8px;
     color: var(--secondary-text-color);
     transition: color 0.2s ease;
 }
@@ -186,15 +206,42 @@
     width: 28px;
     height: 28px;
     border-radius: 50%;
+    margin-top: 9px;
     margin-right: 10px;
     object-fit: cover;
 }
 
 .replies-list {
-    margin-left: 38px;
-    margin-top: 8px;
     padding-left: 0;
     list-style-type: none;
+}
+
+.reply-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 12px;
+    margin-left: 8px;
+    color: var(--secondary-text-color);
+    transition: color 0.2s ease;
+}
+
+.reply-btn:hover {
+    color: var(--button-color);
+}
+
+.show-more-btn {
+    background: none;
+    border: none;
+    color: var(--secondary-text-color);
+    cursor: pointer;
+    font-size: 12px;
+    margin-top: 8px;
+    text-decoration: underline;
+}
+
+.show-more-btn:hover {
+    color: var(--text-color);
 }
 
 .error-message {
