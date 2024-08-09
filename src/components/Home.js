@@ -107,8 +107,8 @@ function Home({ user }) {
           <ul>
             <li>Capture multiple images and create loops</li>
             <li>Apply custom filters to your loops</li>
-            <li>Manage your personal to-do list</li>
-            <li>Share your creations with the community</li>
+            <li>Customize your profile</li>
+            <li>Share your creations with your followers</li>
           </ul>
         </div>
       </div>

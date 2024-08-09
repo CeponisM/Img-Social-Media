@@ -1,3 +1,4 @@
+/* eslint-disable no-restricted-globals */
 console.log('Worker script started');
 
 let cv = null;

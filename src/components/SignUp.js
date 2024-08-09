@@ -44,7 +44,7 @@ function SignUp() {
         email,
         photoURL: null,
         followers: [],
-        following: [],
+        following: ["DYNjzN8DqIakiOFnTqwzJveGmIn2"],
         privacySettings: { postsVisibility: 'public' }
       });
 
@@ -59,17 +59,31 @@ function SignUp() {
     try {
       const result = await signInWithPopup(auth, provider);
       const user = result.user;
+  
+      // Check if the user document already exists
       const userDoc = await getDocs(query(collection(db, 'users'), where('email', '==', user.email)));
-      
+  
       if (userDoc.empty) {
+        // If the user document does not exist, create it
+        await setDoc(doc(db, 'users', user.uid), {
+          username: user.displayName,
+          email: user.email,
+          photoURL: user.photoURL,
+          followers: [],
+          following: ["DYNjzN8DqIakiOFnTqwzJveGmIn2"],
+          privacySettings: { postsVisibility: 'public' }
+        });
+  
         navigate('/complete-profile', { state: { user } });
       } else {
+        // If the user document exists, navigate to the profile page
         navigate(`/profile/${user.uid}`);
       }
     } catch (error) {
       setError(error.message);
     }
   };
+  
 
   return (
     <div className="sign-up">

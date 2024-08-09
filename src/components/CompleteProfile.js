@@ -56,7 +56,7 @@ function CompleteProfile() {
         email: user.email,
         photoURL: user.photoURL,
         followers: [],
-        following: [],
+        following: ["DYNjzN8DqIakiOFnTqwzJveGmIn2"],
         privacySettings: { postsVisibility: 'public' },
         profileCompleted: true
       });
