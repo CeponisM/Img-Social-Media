@@ -1,70 +1,64 @@
-# Getting Started with Create React App
+# React VSCO-Style Image Social Media App
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A modern image-based social media app built with React and Firebase.
 
-## Available Scripts
+## Overview
 
-In the project directory, you can run:
+This app allows users to:
 
-### `npm start`
+- Create profiles and follow other users
+- Capture multiple images from a camera
+- Apply filters and aesthetic settings to image sequences
+- Loop and preview posts before uploading
+- Share posts with captions and interact via likes, comments, and replies
+- Browse a feed of posts from followed users
+- Receive notifications for post and comment interactions
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## Features
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+### User Authentication
+- Firebase Authentication for sign-in/sign-up
+- Profile completion flow
 
-### `npm test`
+### Posts
+- Sequence of images stitched into a loop
+- Filter effects (brightness, contrast, saturation, hue, blur, etc.)
+- Interval customization for loop playback speed
+- Auto and manual capture modes using OpenCV.js (via Web Worker)
+- Upload with caption, store in Firebase Storage and Firestore
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### Social Interactions
+- Like posts and comments
+- Reply to comments
+- Follow/unfollow users
+- Real-time notifications
 
-### `npm run build`
+### Feed & Profile
+- Home feed showing latest posts from followed users
+- User profiles with paginated posts
+- Privacy settings and profile editing
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+### UI and UX
+- Responsive design with dark mode support
+- Smooth transitions using Framer Motion
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## Tech Stack
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+- **Frontend**: React 18, React Router, Framer Motion
+- **Backend**: Firebase Authentication, Firestore, Firebase Storage
+- **Image Processing**: OpenCV.js (via `worker.js`)
+- **Performance**: React.memo, lazy loading, virtualization
 
-### `npm run eject`
+## Scripts
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+- `npm start` – start development server
+- `npm run build` – build production app
+- `npm test` – run tests
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+## Notes
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+- OpenCV features are loaded dynamically in a Web Worker (`worker.js`)
+- Post modal support included for deep linking from notifications
+- Project uses Firestore queries for pagination and filtering
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+---
