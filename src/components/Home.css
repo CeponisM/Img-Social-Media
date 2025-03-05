@@ -17,6 +17,7 @@
   .landing-container {
     max-width: 1200px;
     margin: 0 auto;
+    background-color: var(--surface-color);
     padding: var(--spacing-lg);
     display: flex;
     flex-direction: column;
@@ -433,7 +434,6 @@
   
   /* Dark mode adjustments */
   @media (prefers-color-scheme: dark) {
-    .feature-card,
     .user-profile-card,
     .suggested-users,
     .empty-feed,
@@ -458,8 +458,6 @@
       color: var(--primary-color);
     }
     
-    .landing-hero p,
-    .feature-card p,
     .suggestion-reason,
     .app-info,
     .empty-feed p,
