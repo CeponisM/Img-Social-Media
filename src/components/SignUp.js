@@ -266,6 +266,7 @@ function SignUp() {
           <input
             type="text"
             placeholder="Username"
+            className="form-input"
             value={username}
             onChange={handleUsernameChange}
             required
@@ -279,6 +280,7 @@ function SignUp() {
           <input
             type="email"
             placeholder="Email"
+            className="form-input"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -291,6 +293,7 @@ function SignUp() {
           <input
             type="password"
             placeholder="Password"
+            className="form-input"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
@@ -303,6 +306,7 @@ function SignUp() {
           <input
             type="password"
             placeholder="Confirm Password"
+            className="form-input"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             required

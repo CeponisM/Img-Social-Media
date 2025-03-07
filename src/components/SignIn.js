@@ -102,6 +102,7 @@ function SignIn() {
         <div className={`form-group ${error && !email ? 'has-error' : ''}`}>
           <input
             type="email"
+            className="form-input"
             placeholder="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -114,6 +115,7 @@ function SignIn() {
           <input
             type="password"
             placeholder="Password"
+            className="form-input"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required

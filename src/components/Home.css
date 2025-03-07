@@ -431,7 +431,11 @@
       transform: rotate(360deg);
     }
   }
-  
+
+  .auth-form .form-group .form-input {
+    color: #fff;
+  }
+
   /* Dark mode adjustments */
   @media (prefers-color-scheme: dark) {
     .user-profile-card,
