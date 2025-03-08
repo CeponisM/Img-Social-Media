@@ -9,36 +9,44 @@ function EditProfileModal({ user, onClose, onSave }) {
     });
 
     function sanitizeInput(input) {
-        return input.replace(/<[^>]*>?/gm, '').trim();
+        return input.replace(/<[^>]*>/g, ''); // strip tags only
     }
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
-        setEditedProfile(prev => ({ ...prev, [name]: sanitizeInput(value) }));
+        setEditedProfile(prev => ({ ...prev, [name]: value })); // no sanitize here
     };
 
     const handleSubmit = (e) => {
         e.preventDefault();
 
+        // Sanitize input at submit time
+        const cleanedProfile = {
+            bioTitle: sanitizeInput(editedProfile.bioTitle).trim(),
+            bio: sanitizeInput(editedProfile.bio).trim(),
+            website: sanitizeInput(editedProfile.website).trim(),
+            location: sanitizeInput(editedProfile.location).trim(),
+        };
+
         // Client-side validation
-        if (editedProfile.bioTitle.length > 50) {
+        if (cleanedProfile.bioTitle.length > 50) {
             alert('Bio title must be less than 50 characters');
             return;
         }
-        if (editedProfile.bio.length > 150) {
+        if (cleanedProfile.bio.length > 150) {
             alert('Bio must be less than 150 characters');
             return;
         }
-        if (editedProfile.website && !isValidUrl(editedProfile.website)) {
+        if (cleanedProfile.website && !isValidUrl(cleanedProfile.website)) {
             alert('Please enter a valid website URL');
             return;
         }
-        if (editedProfile.location.length > 50) {
+        if (cleanedProfile.location.length > 50) {
             alert('Location must be less than 50 characters');
             return;
         }
 
-        onSave(editedProfile);
+        onSave(cleanedProfile);
     };
 
     return (
