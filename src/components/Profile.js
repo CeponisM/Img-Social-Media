@@ -7,6 +7,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { createNotification } from '../utils/notificationHelpers';
 import EditProfileModal from './EditProfileModal';
 import Modal from './Modal';
+import defaultAvatar from '../assets/default-avatar.png';
 import './Profile.css';
 
 function Profile({ currentUser, modalPost, setModalPost }) {
@@ -546,7 +547,7 @@ function Profile({ currentUser, modalPost, setModalPost }) {
     <div className="profile">
       <div className="profile-header">
         <img
-          src={user.photoURL || '/default-avatar.png'}
+          src={user.photoURL || defaultAvatar}
           alt={`${user.username}'s profile`}
           className="profile-picture"
         />
