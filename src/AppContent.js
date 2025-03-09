@@ -103,6 +103,7 @@ function AppContent() {
                     <Route path="/capture" element={user ? <ImageCapture user={user} /> : <Navigate to="/signin" />} />
                     <Route path="/edit" element={user ? <ImageEditor user={user} /> : <Navigate to="/signin" />} />
                     <Route path="/privacy-settings" element={user ? <PrivacySettings user={user} /> : <Navigate to="/signin" />} />
+                    <Route path="/settings" element={user ? <PrivacySettings user={user} /> : <Navigate to="/signin" />} />
                     <Route
                         path="/notifications"
                         element={
