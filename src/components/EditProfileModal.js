@@ -7,20 +7,29 @@ function EditProfileModal({ user, onClose, onSave }) {
         website: user.website || '',
         location: user.location || '',
     });
+    const [imageFile, setImageFile] = useState(null);
 
     function sanitizeInput(input) {
-        return input.replace(/<[^>]*>/g, ''); // strip tags only
+        return input.replace(/<[^>]*>/g, '');
     }
 
     const handleInputChange = (e) => {
         const { name, value } = e.target;
-        setEditedProfile(prev => ({ ...prev, [name]: value })); // no sanitize here
+        setEditedProfile(prev => ({ ...prev, [name]: value }));
+    };
+
+    const handleImageChange = (e) => {
+        const file = e.target.files[0];
+        if (file && file.type.startsWith("image/")) {
+            setImageFile(file);
+        } else {
+            alert("Please select a valid image file.");
+        }
     };
 
     const handleSubmit = (e) => {
         e.preventDefault();
 
-        // Sanitize input at submit time
         const cleanedProfile = {
             bioTitle: sanitizeInput(editedProfile.bioTitle).trim(),
             bio: sanitizeInput(editedProfile.bio).trim(),
@@ -28,7 +37,6 @@ function EditProfileModal({ user, onClose, onSave }) {
             location: sanitizeInput(editedProfile.location).trim(),
         };
 
-        // Client-side validation
         if (cleanedProfile.bioTitle.length > 50) {
             alert('Bio title must be less than 50 characters');
             return;
@@ -46,7 +54,7 @@ function EditProfileModal({ user, onClose, onSave }) {
             return;
         }
 
-        onSave(cleanedProfile);
+        onSave({ ...cleanedProfile, imageFile });
     };
 
     return (
@@ -54,30 +62,13 @@ function EditProfileModal({ user, onClose, onSave }) {
             <div className="edit-profile-modal" onClick={(e) => e.stopPropagation()}>
                 <h3>Edit Profile</h3>
                 <form className="edit-profile-form" onSubmit={handleSubmit}>
-                    <input
-                        name="bioTitle"
-                        value={editedProfile.bioTitle}
-                        onChange={handleInputChange}
-                        placeholder="Bio Title"
-                    />
-                    <textarea
-                        name="bio"
-                        value={editedProfile.bio}
-                        onChange={handleInputChange}
-                        placeholder="Bio"
-                    />
-                    <input
-                        name="website"
-                        value={editedProfile.website}
-                        onChange={handleInputChange}
-                        placeholder="Website"
-                    />
-                    <input
-                        name="location"
-                        value={editedProfile.location}
-                        onChange={handleInputChange}
-                        placeholder="Location"
-                    />
+                    <input name="bioTitle" value={editedProfile.bioTitle} onChange={handleInputChange} placeholder="Bio Title" />
+                    <textarea name="bio" value={editedProfile.bio} onChange={handleInputChange} placeholder="Bio" />
+                    <input name="website" value={editedProfile.website} onChange={handleInputChange} placeholder="Website" />
+                    <input name="location" value={editedProfile.location} onChange={handleInputChange} placeholder="Location" />
+                    <span>Profile Image:&nbsp;
+                    <input type="file" accept="image/*" onChange={handleImageChange} />
+                    </span>
                     <button type="submit">Save Changes</button>
                 </form>
             </div>

@@ -3,6 +3,7 @@ import { db } from '../firebase';
 import { collection, addDoc, query, where, orderBy, onSnapshot, serverTimestamp, limit, getDoc, getDocs, updateDoc, arrayUnion, arrayRemove, doc } from 'firebase/firestore';
 import { Link, useNavigate } from 'react-router-dom';
 import DOMPurify from 'dompurify';
+import defaultAvatar from '../assets/default-avatar.png';
 import './Modal.css';
 
 const Modal = React.memo(({ post, onClose, user, currentUser, onLike, onComment, handleUserClick }) => {
@@ -50,7 +51,7 @@ const Modal = React.memo(({ post, onClose, user, currentUser, onLike, onComment,
         const userData = await fetchUserData(commentData.userId);
         return {
           ...commentData,
-          userAvatar: userData?.photoURL || '/default-avatar.png',
+          userAvatar: userData?.photoURL || defaultAvatar,
           userName: userData?.username || 'Unknown User'
         };
       }));
@@ -66,7 +67,7 @@ const Modal = React.memo(({ post, onClose, user, currentUser, onLike, onComment,
           const userData = await fetchUserData(replyData.userId);
           return {
             ...replyData,
-            userAvatar: userData?.photoURL || '/default-avatar.png',
+            userAvatar: userData?.photoURL || defaultAvatar,
             userName: userData?.username || 'Unknown User'
           };
         }));
@@ -215,7 +216,7 @@ const Modal = React.memo(({ post, onClose, user, currentUser, onLike, onComment,
         <div className="replies">
           {displayedReplies.map(reply => (
             <div key={reply.id} className="reply">
-              <img src={reply.userAvatar || '/default-avatar.png'} alt={reply.userName} className="comment-avatar" />
+              <img src={reply.userAvatar || defaultAvatar} alt={reply.userName} className="comment-avatar" />
               <div className="comment-content">
                 <span className="comment-username">{reply.userName}</span>
                 <span className="comment-text">{reply.content}</span>
@@ -241,7 +242,7 @@ const Modal = React.memo(({ post, onClose, user, currentUser, onLike, onComment,
   const memoizedComments = useMemo(() => {
     return comments.map(comment => (
       <div key={comment.id} className="comment">
-        <img src={comment.userAvatar || '/default-avatar.png'} alt={comment.userName} className="comment-avatar" />
+        <img src={comment.userAvatar || defaultAvatar} alt={comment.userName} className="comment-avatar" />
         <div className="comment-content">
           <Link to={`/profile/${comment.userId}`} onClick={() => handleUserClick(comment.userId)}>
             <span className="comment-username">{sanitizeInput(comment.userName)}</span>

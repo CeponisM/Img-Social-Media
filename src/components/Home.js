@@ -15,6 +15,7 @@ import {
 } from 'firebase/firestore';
 import FeedPost from './FeedPost';
 import { motion, AnimatePresence } from 'framer-motion';
+import defaultAvatar from '../assets/default-avatar.png';
 import './Home.css';
 
 // Memoized FeedPost component for better performance
@@ -419,11 +420,11 @@ function Home({ user }) {
         <div className="user-profile-card">
           <Link to={`/profile/${user.uid}`} className="user-avatar">
             <img 
-              src={user.photoURL || '/default-avatar.png'} 
+              src={user.photoURL || defaultAvatar} 
               alt={user.displayName || 'User avatar'} 
               onError={(e) => {
                 e.target.onerror = null;
-                e.target.src = '/default-avatar.png';
+                e.target.src = defaultAvatar;
               }}
             />
           </Link>
@@ -442,11 +443,11 @@ function Home({ user }) {
               <div key={suggestedUser.id} className="suggested-user">
                 <Link to={`/profile/${suggestedUser.id}`} className="user-avatar small">
                   <img 
-                    src={suggestedUser.photoURL || '/default-avatar.png'} 
+                    src={suggestedUser.photoURL || defaultAvatar} 
                     alt={suggestedUser.displayName || 'User avatar'} 
                     onError={(e) => {
                       e.target.onerror = null;
-                      e.target.src = '/default-avatar.png';
+                      e.target.src = defaultAvatar;
                     }}
                   />
                 </Link>

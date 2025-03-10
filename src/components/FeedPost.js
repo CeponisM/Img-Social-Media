@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { db } from '../firebase';
 import { doc, updateDoc, arrayUnion, arrayRemove, collection, addDoc, getDoc, getDocs, query, where, orderBy, onSnapshot, serverTimestamp, increment } from 'firebase/firestore';
 import { createNotification } from '../utils/notificationHelpers';
+import defaultAvatar from '../assets/default-avatar.png';
 import './FeedPost.css';
 
 const FeedPost = React.memo(({ post, user, openProfile }) => {
@@ -280,7 +281,7 @@ const FeedPost = React.memo(({ post, user, openProfile }) => {
                 <ul className="replies-list">
                     {displayedReplies.map(reply => (
                         <li key={reply.id} className="reply">
-                            <img src={reply.userPhotoURL || '/default-avatar.png'} alt={reply.userName} className="reply-user-avatar" />
+                            <img src={reply.userPhotoURL || defaultAvatar} alt={reply.userName} className="reply-user-avatar" />
                             <div className="reply-content">
                                 <span className="reply-username">{reply.userName}</span>
                                 <span className="reply-text">{reply.content}</span>
@@ -323,7 +324,7 @@ const FeedPost = React.memo(({ post, user, openProfile }) => {
         <ul className="comments-list">
             {comments.map(comment => (
                 <li key={comment.id} className="comment">
-                    <img src={comment.userPhotoURL || '/default-avatar.png'} alt={comment.userName} className="comment-user-avatar" />
+                    <img src={comment.userPhotoURL || defaultAvatar} alt={comment.userName} className="comment-user-avatar" />
                     <div className="comment-content">
                         <Link to={`/profile/${comment.userId}`} onClick={() => openProfile(comment.userId)}>
                             <span className="comment-username">{comment.userName}</span>
@@ -361,7 +362,7 @@ const FeedPost = React.memo(({ post, user, openProfile }) => {
         <div className="feed-post">
             <div className="post-header">
                 <Link to={`/profile/${post.userId}`} onClick={() => openProfile(post.userId)}>
-                    <img src={postUserData?.photoURL || '/default-avatar.png'} alt="User avatar" className="user-avatar" />
+                    <img src={postUserData?.photoURL || defaultAvatar} alt="User avatar" className="user-avatar" />
                 </Link>
                 <Link className='post-username' to={`/profile/${post.userId}`} onClick={() => openProfile(post.userId)}>
                     <span className="user-name">{postUserData?.username || 'Unknown User'}</span>

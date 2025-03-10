@@ -193,12 +193,12 @@ function Header({ user, darkMode, toggleDarkMode }) {
                           onClick={() => handleSelectUser(user.id)}
                         >
                           <img
-                            src={user.photoURL || '/default-avatar.png'}
+                            src={user.photoURL || defaultAvatar}
                             alt={user.username || 'User'}
                             className="search-dropdown-item-avatar"
                             onError={(e) => {
                               e.target.onerror = null;
-                              e.target.src = '/default-avatar.png';
+                              e.target.src = defaultAvatar;
                             }}
                           />
                           <div className="search-dropdown-item-info">
@@ -250,7 +250,7 @@ function Header({ user, darkMode, toggleDarkMode }) {
                     className="user-avatar-header"
                     onError={(e) => {
                       e.target.onerror = null;
-                      e.target.src = '/default-avatar.png';
+                      e.target.src = defaultAvatar;
                     }}
                   />
                 </button>

@@ -3,6 +3,7 @@ import { collection, query, where, orderBy, limit, getDocs, updateDoc, onSnapsho
 import { db } from '../firebase';
 import { Link, useNavigate } from 'react-router-dom';
 import { combineNotifications } from '../utils/notificationHelpers';
+import defaultAvatar from '../assets/default-avatar.png';
 import './Notifications.css';
 
 const Notifications = ({ currentUser, openPostModal, openProfile }) => {
@@ -64,7 +65,7 @@ const Notifications = ({ currentUser, openPostModal, openProfile }) => {
         return (
             <div className="notification-content">
                 <img
-                    src={notification.userAvatar || '/default-avatar.png'}
+                    src={notification.userAvatar || defaultAvatar}
                     alt={notification.senderUsername}
                     className="sender-avatar"
                     onClick={(e) => {

@@ -490,13 +490,19 @@ function Profile({ currentUser, modalPost, setModalPost }) {
 
     try {
       const userRef = doc(db, 'users', userId);
-
       const allowedUpdates = {
         bioTitle: editedProfile.bioTitle,
         bio: editedProfile.bio,
         website: editedProfile.website,
         location: editedProfile.location,
       };
+
+      if (editedProfile.imageFile) {
+        const imageRef = ref(storage, `profileImages/${userId}`);
+        await uploadBytes(imageRef, editedProfile.imageFile);
+        const imageUrl = await getDownloadURL(imageRef);
+        allowedUpdates.profileImageUrl = imageUrl;
+      }
 
       await updateDoc(userRef, allowedUpdates);
       setUser(prevUser => ({ ...prevUser, ...allowedUpdates }));
