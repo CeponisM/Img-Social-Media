@@ -13,6 +13,15 @@ const Modal = React.memo(({ post, onClose, user, currentUser, onLike, onComment,
   const [error, setError] = useState(null);
   const [replyingTo, setReplyingTo] = useState(null);
   const [expandedComments, setExpandedComments] = useState({});
+  const [postUserData, setPostUserData] = useState(null);
+  const [isLiked, setIsLiked] = useState(post?.likes?.includes(currentUser?.uid));
+  const [likes, setLikes] = useState(post?.likes || []);
+
+  useEffect(() => {
+    if (post?.userId) {
+      fetchUserData(post.userId).then(setPostUserData);
+    }
+  }, [post?.userId]);
 
   const sanitizeInput = useCallback((input) => {
     return DOMPurify.sanitize(input);
@@ -37,14 +46,14 @@ const Modal = React.memo(({ post, onClose, user, currentUser, onLike, onComment,
       setError('Invalid post data');
       return;
     }
-  
+
     const commentsQuery = query(
       collection(db, 'comments'),
       where('postId', '==', post.id),
       orderBy('createdAt', 'desc'),
       limit(50)
     );
-  
+
     const unsubscribe = onSnapshot(commentsQuery, async (snapshot) => {
       const fetchedComments = await Promise.all(snapshot.docs.map(async (doc) => {
         const commentData = { id: doc.id, ...doc.data() };
@@ -55,7 +64,7 @@ const Modal = React.memo(({ post, onClose, user, currentUser, onLike, onComment,
           userName: userData?.username || 'Unknown User'
         };
       }));
-  
+
       const commentsWithReplies = await Promise.all(fetchedComments.map(async (comment) => {
         const repliesQuery = query(
           collection(db, 'comments', comment.id, 'replies'),
@@ -73,10 +82,10 @@ const Modal = React.memo(({ post, onClose, user, currentUser, onLike, onComment,
         }));
         return { ...comment, replies };
       }));
-  
+
       setComments(commentsWithReplies);
     }, (err) => setError(`Error fetching comments: ${err.message}`));
-  
+
     return () => {
       unsubscribe();
     };
@@ -145,17 +154,17 @@ const Modal = React.memo(({ post, onClose, user, currentUser, onLike, onComment,
       }
 
       // Update local state
-      setComments(prevComments => 
-        prevComments.map(comment => 
+      setComments(prevComments =>
+        prevComments.map(comment =>
           isReply && comment.id === parentCommentId
             ? {
-                ...comment,
-                replies: comment.replies.map(reply =>
-                  reply.id === commentId
-                    ? { ...reply, likes: currentLikes.includes(currentUser.uid) ? currentLikes.filter(id => id !== currentUser.uid) : [...currentLikes, currentUser.uid] }
-                    : reply
-                )
-              }
+              ...comment,
+              replies: comment.replies.map(reply =>
+                reply.id === commentId
+                  ? { ...reply, likes: currentLikes.includes(currentUser.uid) ? currentLikes.filter(id => id !== currentUser.uid) : [...currentLikes, currentUser.uid] }
+                  : reply
+              )
+            }
             : comment.id === commentId
               ? { ...comment, likes: currentLikes.includes(currentUser.uid) ? currentLikes.filter(id => id !== currentUser.uid) : [...currentLikes, currentUser.uid] }
               : comment
@@ -165,6 +174,25 @@ const Modal = React.memo(({ post, onClose, user, currentUser, onLike, onComment,
       setError(`Error updating like: ${error.message}`);
     }
   }, [currentUser]);
+
+  const handleLikeClick = async () => {
+    if (!post?.likes || !Array.isArray(post.likes)) {
+      console.error("Post.likes is not an array", post.likes);
+      return;
+    }
+
+    try {
+      await onLike(post.id); // updates Firestore
+      const updatedLikes = isLiked
+        ? likes.filter(uid => uid !== currentUser.uid)
+        : [...likes, currentUser.uid];
+
+      setIsLiked(!isLiked);
+      setLikes(updatedLikes);
+    } catch (err) {
+      console.error("Error updating like:", err);
+    }
+  };
 
   const handleDoubleClick = useCallback(async () => {
     if (!post.likes.includes(currentUser?.uid)) {
@@ -299,7 +327,7 @@ const Modal = React.memo(({ post, onClose, user, currentUser, onLike, onComment,
               {post?.createdAt?.toDate().toLocaleString() || 'Date unknown'}
             </p>
             <div className="post-actions">
-              <button onClick={handleLike} className="like-button">
+              <button onClick={handleLikeClick} className="like-button">
                 {post.likes.includes(currentUser?.uid) ? '❤️' : '🤍'}
               </button>
               <span>{post.likes.length} likes</span>

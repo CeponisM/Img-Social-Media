@@ -85,6 +85,9 @@ function SignIn() {
       <div className="auth-header">
         <h2>Welcome Back</h2>
         <p>Sign in to continue your creative journey</p>
+        <p>DEFAULT TEST ACCOUNT:</p>
+        <p>Username: test@testing.com</p>
+        <p>Password: testing</p>
       </div>
       
       {error && (
